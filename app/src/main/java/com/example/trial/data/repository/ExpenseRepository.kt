@@ -1,35 +1,23 @@
 package com.example.trial.data.repository
 
 import com.example.trial.data.local.dao.ExpenseDao
-import com.example.trial.data.local.entity.ExpenseEntity
+import com.example.trial.data.local.entities.ExpenseEntity
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class ExpenseRepository private constructor(private val dao: ExpenseDao): IExpenseRepository {
+class ExpenseRepository @Inject constructor(
+    private val expenseDao: ExpenseDao
+) {
+    // Lectura
+    val allExpenses: Flow<List<ExpenseEntity>> = expenseDao.getAllExpenses()
+    val totalSpending: Flow<Double?> = expenseDao.getTotalSpending()
 
-    override suspend fun insertExpense(expense: ExpenseEntity) {
-        dao.insert(expense)
+    // Escritura
+    suspend fun addExpense(expense: ExpenseEntity) {
+        expenseDao.insertExpense(expense)
     }
 
-    override suspend fun deleteExpense(id: Long) {
-        dao.deleteById(id)
-    }
-
-    override fun getAllExpenses(): Flow<List<ExpenseEntity>> = dao.getAll()
-
-    override fun getSumByCategory(startTs: Long, endTs: Long): Flow<List<CategorySum>> = dao.getSumByCategory(startTs, endTs)
-
-    override suspend fun getTotalBetween(startTs: Long, endTs: Long): Double {
-        // simple impl: sum the flow once
-        val list = dao.getAll() // can't directly collect here; implement in real repo
-        return 0.0 // TODO: implement in concrete repository
-    }
-
-    companion object {
-        @Volatile private var instance: ExpenseRepository? = null
-
-        fun getInstance(dao: ExpenseDao): ExpenseRepository =
-            instance ?: synchronized(this) {
-                instance ?: ExpenseRepository(dao).also { instance = it }
-            }
+    suspend fun deleteExpense(expense: ExpenseEntity) {
+        expenseDao.deleteExpense(expense)
     }
 }
