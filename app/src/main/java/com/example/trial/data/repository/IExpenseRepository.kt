@@ -1,7 +1,7 @@
 package com.example.trial.data.repository
 
 import kotlinx.coroutines.flow.Flow
-import com.example.trial.data.local.entity.ExpenseEntity
+import com.example.trial.data.local.entities.ExpenseEntity
 
 interface IExpenseRepository {
     suspend fun insertExpense(expense: ExpenseEntity)
