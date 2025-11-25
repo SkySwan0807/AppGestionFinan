@@ -1,7 +1,7 @@
 package com.example.trial.di
 
 import android.content.Context
-import com.example.trial.data.local.AppDatabase
+import com.example.trial.data.local.db.AppDatabase
 import com.example.trial.data.local.dao.ExpenseDao
 import dagger.Module
 import dagger.Provides

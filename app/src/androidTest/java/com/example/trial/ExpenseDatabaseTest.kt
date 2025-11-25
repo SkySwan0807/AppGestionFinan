@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.trial.data.local.AppDatabase
+import com.example.trial.data.local.db.AppDatabase
 import com.example.trial.data.local.dao.ExpenseDao
 import com.example.trial.data.local.entities.ExpenseEntity
 import kotlinx.coroutines.flow.first
