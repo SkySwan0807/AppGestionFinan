@@ -18,4 +18,5 @@
     <string name="title_home">Inicio</string>
     <string name="title_dashboard">Registro</string>
     <string name="title_notifications">Metas</string>
+    <string name="title_activity_prueba">PruebaActivity</string>
 </resources>

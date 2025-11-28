@@ -13,6 +13,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Trial">
         <activity
+            android:name=".ui.PruebaActivity"
+            android:exported="false"
+            android:label="@string/title_activity_prueba"
+            android:theme="@style/Theme.Trial" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name">
