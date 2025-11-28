@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:name=".ExpenseApp"
         android:allowBackup="true"
@@ -11,16 +13,13 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcherfinan_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Trial">
-        <activity
-            android:name=".ui.PruebaActivity"
-            android:exported="false"
-            android:label="@string/title_activity_prueba"
-            android:theme="@style/Theme.Trial" />
+        android:theme="@style/Theme.Trial"
+        tools:targetApi="31">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Trial">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
