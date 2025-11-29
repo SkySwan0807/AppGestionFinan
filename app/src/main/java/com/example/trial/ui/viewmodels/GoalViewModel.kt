@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.trial.data.local.entities.GoalEntity
 import com.example.trial.data.repository.GoalRepository
+import com.example.trial.data.local.entities.MetaAhorroEntity
+import com.example.trial.data.repository
 import com.example.trial.data.repository.IExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
