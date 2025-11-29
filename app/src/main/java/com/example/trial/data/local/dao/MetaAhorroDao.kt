@@ -31,6 +31,9 @@ interface MetaAhorroDao {
     @Query("SELECT * FROM metas_ahorro WHERE idEstado = :estado ORDER BY fechaObjetivo ASC")
     fun getByEstado(estado: Int): Flow<List<MetaAhorroEntity>>
 
+    @Query("SELECT * FROM metas_ahorro WHERE idEstado = 1 ORDER BY fechaObjetivo ASC")
+    fun getActiveMetas(): Flow<List<MetaAhorroEntity>>
+
     // Actualizar el montoActual de una meta
     @Query("UPDATE metas_ahorro SET montoActual = :nuevoMonto WHERE idMeta = :idMeta")
     suspend fun actualizarMonto(idMeta: Int, nuevoMonto: Double)

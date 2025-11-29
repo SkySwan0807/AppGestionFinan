@@ -298,12 +298,12 @@ fun ExpenseItem(expense: ExpenseEntity) {
     }
 }
 
-fun getCategoryColor(category: String): Color {
+fun getCategoryColor(category: Int): Color {
     return when (category) {
-        "Alimentación" -> FoodColor
-        "Transporte" -> TransportColor
-        "Servicios" -> ServicesColor
-        "Ocio" -> LeisureColor
+        0 -> FoodColor
+        1 -> TransportColor
+        2 -> ServicesColor
+        3 -> LeisureColor
         else -> OthersColor
     }
 }

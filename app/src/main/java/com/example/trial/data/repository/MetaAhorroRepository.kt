@@ -42,4 +42,9 @@ class MetaAhorroRepository @Inject constructor(
     fun getMetasVigentes(fechaActual: Long): Flow<List<MetaAhorroEntity>> {
         return dao.getMetasVigentes(fechaActual)
     }
+
+    fun getActiveMetas(): Flow<List<MetaAhorroEntity>>
+    {
+        return dao.getActiveMetas()
+    }
 }

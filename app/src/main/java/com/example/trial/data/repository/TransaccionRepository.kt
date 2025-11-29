@@ -16,6 +16,10 @@ class TransaccionRepository @Inject constructor(
     fun getTotalPorCuenta(idCuenta: Int): Flow<Double?> =
         transaccionDao.getTotalPorCuenta(idCuenta)
 
+    suspend fun getTotalByCategoriaAndPeriod(idCategoria: Int, start: Long, end: Long): Double {
+        return transaccionDao.getTotalPorCategoriaYPeriodo(idCategoria, start, end) ?: 0.0
+    }
+
     // Escritura
     suspend fun addTransaccion(transaccion: TransaccionEntity) {
         transaccionDao.insertTransaccion(transaccion)

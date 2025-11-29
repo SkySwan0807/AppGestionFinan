@@ -2,27 +2,29 @@ package com.example.trial.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.trial.data.local.entities.GoalEntity
-import com.example.trial.data.repository.GoalRepository
 import com.example.trial.data.local.entities.MetaAhorroEntity
-import com.example.trial.data.repository
-import com.example.trial.data.repository.IExpenseRepository
+import com.example.trial.data.repository.MetaAhorroRepository
+import com.example.trial.data.repository.TransaccionRepository
+import com.example.trial.data.repository.CategoriaRepository
+import com.example.trial.data.local.entities.CategoriaEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
-data class GoalWithProgress(
-    val goal: GoalEntity,
+data class MetaAhorroWithProgress(
+    val meta: MetaAhorroEntity,
     val progress: Float,
     val remainingAmount: Double,
     val remainingDays: Int
 )
 
-data class GoalUiState(
-    val goals: List<GoalWithProgress> = emptyList(),
-    val category: String = "Transporte",
+data class MetaAhorroUiState(
+    val metas: List<MetaAhorroWithProgress> = emptyList(),
+    val categories: List<CategoriaEntity> = emptyList(),
+    val categoryId: Int = 0,
+    val categoryName: String = "",
     val targetAmount: String = "",
     val months: String = "1",
     val description: String = "",
@@ -32,52 +34,81 @@ data class GoalUiState(
 )
 
 @HiltViewModel
-class GoalViewModel @Inject constructor(
-    private val goalRepository: GoalRepository,
-    private val expenseRepository: IExpenseRepository
+class MetaAhorroViewModel @Inject constructor(
+    private val metaRepository: MetaAhorroRepository,
+    private val transaccionRepository: TransaccionRepository,
+    private val categoriaRepository: CategoriaRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(GoalUiState())
-    val uiState: StateFlow<GoalUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MetaAhorroUiState())
+    val uiState: StateFlow<MetaAhorroUiState> = _uiState.asStateFlow()
 
     init {
-        loadGoals()
+        loadCategorias()
+        loadMetas()
     }
 
-    private fun loadGoals() {
+    val categorias = categoriaRepository.getAllCategorias()
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
+        )
+
+    // -------------------------------------------------------------
+    // CARGA DE CATEGORÍAS DESDE LA BASE DE DATOS
+    // -------------------------------------------------------------
+    private fun loadCategorias() {
         viewModelScope.launch {
-            goalRepository.getActiveGoals()
-                .map { goals ->
-                    goals.map { goal ->
-                        val (startMonth, endMonth) = getMonthRange()
-                        val currentSpent = expenseRepository.getTotalByCategoryAndPeriod(
-                            goal.category,
-                            startMonth,
-                            endMonth
-                        )
-                        
-                        val progress = if (goal.targetAmount > 0) {
-                            (currentSpent / goal.targetAmount).coerceIn(0.0, 1.0).toFloat()
-                        } else 0f
-
-                        val remainingDays = calculateRemainingDays(goal.endDate)
-
-                        GoalWithProgress(
-                            goal = goal.copy(currentAmount = currentSpent),
-                            progress = progress,
-                            remainingAmount = (goal.targetAmount - currentSpent).coerceAtLeast(0.0),
-                            remainingDays = remainingDays
-                        )
-                    }
-                }
-                .collect { goalsWithProgress ->
-                    _uiState.update { it.copy(goals = goalsWithProgress, isLoading = false) }
+            categoriaRepository.getAllCategorias()
+                .collect { categorias ->
+                    _uiState.update { it.copy(categories = categorias) }
                 }
         }
     }
 
-    fun onCategoryChange(category: String) {
-        _uiState.update { it.copy(category = category) }
+    // -------------------------------------------------------------
+    // CARGA DE METAS CON PROGRESO
+    // -------------------------------------------------------------
+    private fun loadMetas() {
+        viewModelScope.launch {
+            metaRepository.getActiveMetas()
+                .flatMapLatest { metas ->
+                    combine(
+                        metas.map { meta ->
+                            transaccionRepository.getTotalPorCuenta(meta.idCategoria)
+                                .map { total ->
+                                    val currentSpent = total ?: 0.0
+
+                                    val progress = if (meta.monto > 0) {
+                                        (currentSpent / meta.monto)
+                                            .coerceIn(0.0, 1.0)
+                                            .toFloat()
+                                    } else 0f
+
+                                    MetaAhorroWithProgress(
+                                        meta = meta.copy(montoActual = currentSpent),
+                                        progress = progress,
+                                        remainingAmount = (meta.monto - currentSpent).coerceAtLeast(0.0),
+                                        remainingDays = calculateRemainingDays(meta.fechaObjetivo)
+                                    )
+                                }
+                        }
+                    ) { it.toList() }
+                }
+                .collect { metasWithProgress ->
+                    _uiState.update {
+                        it.copy(metas = metasWithProgress, isLoading = false)
+                    }
+                }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // CAMBIO DE CAMPOS DEL FORMULARIO
+    // -------------------------------------------------------------
+    fun onCategoryChange(id: Int) {
+        _uiState.update { it.copy(categoryId = id) }
     }
 
     fun onTargetAmountChange(amount: String) {
@@ -92,10 +123,14 @@ class GoalViewModel @Inject constructor(
         _uiState.update { it.copy(description = description) }
     }
 
-    fun createGoal() {
-        val currentState = _uiState.value
-        val amount = currentState.targetAmount.toDoubleOrNull()
-        val months = currentState.months.toIntOrNull()
+    // -------------------------------------------------------------
+    // CREAR NUEVA META
+    // -------------------------------------------------------------
+    fun createMeta() {
+        val current = _uiState.value
+
+        val amount = current.targetAmount.toDoubleOrNull()
+        val months = current.months.toIntOrNull()
 
         if (amount == null || amount <= 0) {
             _uiState.update { it.copy(errorMessage = "Monto inválido") }
@@ -112,30 +147,33 @@ class GoalViewModel @Inject constructor(
 
             try {
                 val calendar = Calendar.getInstance()
-                val startDate = calendar.timeInMillis
+                val start = calendar.timeInMillis
                 calendar.add(Calendar.MONTH, months)
-                val endDate = calendar.timeInMillis
+                val end = calendar.timeInMillis
 
-                val goal = GoalEntity(
-                    category = currentState.category,
-                    targetAmount = amount,
-                    currentAmount = 0.0,
-                    startDate = startDate,
-                    endDate = endDate,
-                    description = currentState.description.ifBlank { null }
+                val meta = MetaAhorroEntity(
+                    idCategoria = current.categoryId,
+                    monto = amount,
+                    montoActual = 0.0,
+                    fechaInicio = start,
+                    fechaObjetivo = end,
+                    descripcion = current.description.takeIf { it.isNotBlank() } ?: "",
+                    idEstado = 0,
+                    nombre = current.categoryName
                 )
 
-                goalRepository.insertGoal(goal)
+                metaRepository.insert(meta)
 
                 _uiState.update {
-                    GoalUiState(
-                        goals = it.goals,
+                    it.copy(
                         showSuccess = true,
-                        category = currentState.category
+                        categoryId = current.categoryId,
+                        categoryName = current.categoryName
                     )
                 }
-                
-                loadGoals()
+
+                loadMetas()
+
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -147,36 +185,27 @@ class GoalViewModel @Inject constructor(
         }
     }
 
-    fun deleteGoal(goal: GoalEntity) {
+    // -------------------------------------------------------------
+    // ELIMINAR META
+    // -------------------------------------------------------------
+    fun deleteMeta(meta: MetaAhorroEntity) {
         viewModelScope.launch {
             try {
-                goalRepository.deleteGoal(goal)
-                loadGoals()
+                metaRepository.delete(meta)
+                loadMetas()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Error al eliminar: ${e.message}") }
             }
         }
     }
 
+    // -------------------------------------------------------------
+    // UTILIDADES
+    // -------------------------------------------------------------
     private fun calculateRemainingDays(endDate: Long): Int {
         val now = System.currentTimeMillis()
         val diff = endDate - now
         return (diff / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(0)
-    }
-
-    private fun getMonthRange(): Pair<Long, Long> {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        val start = calendar.timeInMillis
-
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        val end = calendar.timeInMillis
-
-        return Pair(start, end)
     }
 
     fun clearSuccess() {
@@ -186,12 +215,4 @@ class GoalViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
-
-    val categories = listOf(
-        "Alimentación",
-        "Transporte",
-        "Servicios",
-        "Ocio",
-        "Otros"
-    )
 }

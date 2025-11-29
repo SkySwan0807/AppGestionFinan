@@ -10,7 +10,7 @@ data class MetaAhorroEntity(
     val idCategoria: Int,
     val idEstado: Int,
     val nombre: String,
-    val descripcion: String,
+    val descripcion: String?,
     val monto: Double,
     val montoActual: Double,
     val fechaInicio: Long,

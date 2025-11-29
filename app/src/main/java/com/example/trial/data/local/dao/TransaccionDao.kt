@@ -18,4 +18,8 @@ interface TransaccionDao {
 
     @Query("SELECT SUM(monto) FROM transacciones WHERE idCuenta = :idCuenta")
     fun getTotalPorCuenta(idCuenta: Int): Flow<Double?>
+
+    @Query("SELECT SUM(monto) FROM transacciones WHERE idCategoria = :idCategoria AND fecha BETWEEN :start AND :end")
+    suspend fun getTotalPorCategoriaYPeriodo(idCategoria: Int, start: Long, end: Long): Double?
+
 }

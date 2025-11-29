@@ -4,11 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,14 +17,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.trial.ui.theme.*
-import com.example.trial.ui.viewmodels.GoalViewModel
-import com.example.trial.ui.viewmodels.GoalWithProgress
+import com.example.trial.ui.viewmodels.MetaAhorroViewModel
+import com.example.trial.ui.viewmodels.MetaAhorroWithProgress
 
 @Composable
 fun GoalScreen(
-    viewModel: GoalViewModel = hiltViewModel()
+    viewModel: MetaAhorroViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val categorias by viewModel.categorias.collectAsState(emptyList())
     var showCreateForm by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -37,7 +35,7 @@ fun GoalScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Título
+        // TÍTULO
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -58,18 +56,19 @@ fun GoalScreen(
             }
         }
 
-        // Formulario de crear meta
+        // FORMULARIO
         if (showCreateForm) {
             item {
                 CreateGoalForm(
                     viewModel = viewModel,
                     uiState = uiState,
+                    categorias = categorias,
                     onSuccess = { showCreateForm = false }
                 )
             }
         }
 
-        // Lista de metas activas
+        // LISTA DE METAS
         item {
             Text(
                 text = "Metas Activas",
@@ -79,7 +78,7 @@ fun GoalScreen(
             )
         }
 
-        if (uiState.goals.isEmpty()) {
+        if (uiState.metas.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -100,21 +99,28 @@ fun GoalScreen(
                 }
             }
         } else {
-            items(uiState.goals) { goalWithProgress ->
+            items(uiState.metas) { metaProgress ->
                 GoalCard(
-                    goalWithProgress = goalWithProgress,
-                    onDelete = { viewModel.deleteGoal(goalWithProgress.goal) }
+                    goalWithProgress = metaProgress,
+                    categoriaNombre = categorias.firstOrNull { it.idCategoria == metaProgress.meta.idCategoria }?.nombre
+                        ?: "Categoría",
+                    onDelete = { viewModel.deleteMeta(metaProgress.meta) }
                 )
             }
         }
     }
 }
 
+// ---------------------------------------------------------
+// FORMULARIO
+// ---------------------------------------------------------
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGoalForm(
-    viewModel: GoalViewModel,
-    uiState: com.example.trial.ui.viewmodels.GoalUiState,
+    viewModel: MetaAhorroViewModel,
+    uiState: com.example.trial.ui.viewmodels.MetaAhorroUiState,
+    categorias: List<com.example.trial.data.local.entities.CategoriaEntity>,
     onSuccess: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -134,43 +140,42 @@ fun CreateGoalForm(
         )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
             Text(
                 text = "Nueva Meta",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
-            // Selector de categoría
+            // -------------------------------
+            // SELECTOR DE CATEGORÍA
+            // -------------------------------
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded }
             ) {
                 OutlinedTextField(
-                    value = uiState.category,
+                    value = categorias.firstOrNull { it.idCategoria == uiState.categoryId }?.nombre
+                        ?: "Seleccionar...",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Categoría") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
 
                 ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    viewModel.categories.forEach { category ->
+                    categorias.forEach { categoria ->
                         DropdownMenuItem(
-                            text = { Text(category) },
+                            text = { Text(categoria.nombre) },
                             onClick = {
-                                viewModel.onCategoryChange(category)
+                                viewModel.onCategoryChange(categoria.idCategoria)
                                 expanded = false
                             }
                         )
@@ -178,16 +183,16 @@ fun CreateGoalForm(
                 }
             }
 
-            // Monto objetivo
+            // MONTO
             OutlinedTextField(
                 value = uiState.targetAmount,
                 onValueChange = { viewModel.onTargetAmountChange(it) },
-                label = { Text("Monto límite (BoB)") },
+                label = { Text("Monto límite (BOB)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
-            // Plazo
+            // MESES
             OutlinedTextField(
                 value = uiState.months,
                 onValueChange = { viewModel.onMonthsChange(it) },
@@ -196,20 +201,18 @@ fun CreateGoalForm(
                 singleLine = true
             )
 
-            // Descripción
+            // DESCRIPCIÓN
             OutlinedTextField(
                 value = uiState.description,
                 onValueChange = { viewModel.onDescriptionChange(it) },
                 label = { Text("Descripción (opcional)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
+                modifier = Modifier.fillMaxWidth(),
                 maxLines = 3
             )
 
-            // Botón crear
+            // BOTÓN CREAR
             Button(
-                onClick = { viewModel.createGoal() },
+                onClick = { viewModel.createMeta() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -226,7 +229,7 @@ fun CreateGoalForm(
                 }
             }
 
-            // Error
+            // ERROR
             if (uiState.errorMessage != null) {
                 Text(
                     text = uiState.errorMessage!!,
@@ -238,14 +241,19 @@ fun CreateGoalForm(
     }
 }
 
+// ---------------------------------------------------------
+// CARD DE METAS
+// ---------------------------------------------------------
+
 @Composable
 fun GoalCard(
-    goalWithProgress: GoalWithProgress,
+    goalWithProgress: MetaAhorroWithProgress,
+    categoriaNombre: String,
     onDelete: () -> Unit
 ) {
-    val goal = goalWithProgress.goal
+    val goal = goalWithProgress.meta
     val progress = goalWithProgress.progress
-    val color = getCategoryColor(goal.category)
+    val color = getCategoryColor(goal.idCategoria)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -253,20 +261,17 @@ fun GoalCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
+
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(16.dp)
@@ -275,11 +280,12 @@ fun GoalCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = goal.category,
+                        text = categoriaNombre,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
+
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -289,17 +295,16 @@ fun GoalCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             // Descripción
-            if (!goal.description.isNullOrBlank()) {
-                Text(
-                    text = goal.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+            if (!goal.descripcion.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = goal.descripcion ?: "",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Progreso
             Row(
@@ -307,32 +312,23 @@ fun GoalCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${formatCurrency(goal.currentAmount)} BoB",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
+                    text = "${goal.montoActual} BOB",
+                    style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "de ${formatCurrency(goal.targetAmount)} BoB",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    text = "de ${goal.monto} BOB",
+                    style = MaterialTheme.typography.bodyLarge
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Barra de progreso
             LinearProgressIndicator(
                 progress = progress,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(6.dp)),
-                color = when {
-                    progress >= 1.0f -> RedWarning
-                    progress >= 0.9f -> OrangeMedium
-                    progress >= 0.7f -> Color(0xFFFFEB3B)
-                    else -> GreenSuccess
-                },
+                    .height(12.dp),
+                color = GreenSuccess,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
@@ -366,15 +362,15 @@ fun GoalCard(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (progress >= 1.0f) RedWarning.copy(alpha = 0.1f) 
-                                       else OrangeMedium.copy(alpha = 0.1f)
+                        containerColor = if (progress >= 1.0f) RedWarning.copy(alpha = 0.1f)
+                        else OrangeMedium.copy(alpha = 0.1f)
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = if (progress >= 1.0f) 
-                            "⚠️ ¡Superaste tu meta!" 
-                        else 
+                        text = if (progress >= 1.0f)
+                            "⚠️ ¡Superaste tu meta!"
+                        else
                             "⚠️ Cerca del límite: ${formatCurrency(goalWithProgress.remainingAmount)} BoB restantes",
                         modifier = Modifier.padding(8.dp),
                         style = MaterialTheme.typography.bodySmall,
