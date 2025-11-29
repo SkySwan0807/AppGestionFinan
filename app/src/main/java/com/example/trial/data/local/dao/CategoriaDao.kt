@@ -15,4 +15,7 @@ interface CategoriaDao {
 
     @Query("SELECT * FROM categorias ORDER BY nombre ASC")
     fun getAllCategorias(): Flow<List<CategoriaEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(categorias: List<CategoriaEntity>)
 }

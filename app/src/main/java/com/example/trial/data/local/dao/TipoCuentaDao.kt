@@ -21,4 +21,7 @@ interface TipoCuentaDao {
 
     @Query("SELECT * FROM tipo_cuentas WHERE idTipo = :id")
     suspend fun getById(id: Int): TipoCuentaEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tipos: List<TipoCuentaEntity>)
 }

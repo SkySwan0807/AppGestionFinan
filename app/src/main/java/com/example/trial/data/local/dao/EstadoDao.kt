@@ -21,4 +21,7 @@ interface EstadoDao {
 
     @Query("SELECT * FROM estados WHERE idEstado = :id")
     suspend fun getById(id: Int): EstadoEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(estados: List<EstadoEntity>)
 }
