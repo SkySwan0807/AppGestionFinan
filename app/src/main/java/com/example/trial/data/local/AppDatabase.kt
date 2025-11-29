@@ -4,33 +4,42 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.trial.data.local.dao.ExpenseDao
-import com.example.trial.data.local.entities.ExpenseEntity
+import com.example.trial.data.local.dao.CategoriaDao
+import com.example.trial.data.local.dao.CuentaDao
+import com.example.trial.data.local.dao.TransaccionDao
+import com.example.trial.data.local.entities.*
 
-// 1. Defines las entidades y la versión
-@Database(entities = [ExpenseEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [
+        CategoriaEntity::class,
+        TipoCuentaEntity::class,
+        CuentaEntity::class,
+        EstadoEntity::class,
+        MetaAhorroEntity::class,
+        TransaccionEntity::class
+    ],
+    version = 1,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
 
-    // 2. Expones los DAOs
-    abstract fun expenseDao(): ExpenseDao
+    abstract fun categoriaDao(): CategoriaDao
+    abstract fun cuentaDao(): CuentaDao
+    abstract fun transaccionDao(): TransaccionDao
 
-    // 3. El Singleton
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
         fun getDatabase(context: Context): AppDatabase {
-            // Si la instancia ya existe, la retornamos
             return INSTANCE ?: synchronized(this) {
-                // Si no existe, la creamos (bloqueando otros hilos para evitar duplicados)
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "expense_tracker_db" // Nombre del archivo físico
+                    "finanzas_db"
                 )
-                    .fallbackToDestructiveMigration() // ⚠️ Borra datos si cambias la versión (útil en desarrollo)
+                    .fallbackToDestructiveMigration()
                     .build()
-
                 INSTANCE = instance
                 instance
             }
