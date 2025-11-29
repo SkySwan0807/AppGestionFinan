@@ -9,6 +9,6 @@ data class CuentaEntity(
     val idCuenta: Int = 0,
     val idTipo: Int,
     val nombre: String,
-    val descripcion: String,
+    val descripcion: String?,
     val balance: Double
 )

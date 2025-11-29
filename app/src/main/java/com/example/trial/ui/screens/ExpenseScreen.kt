@@ -18,13 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.trial.ui.theme.*
-import com.example.trial.ui.viewmodels.ExpenseViewModel
+import com.example.trial.ui.viewmodels.TransaccionViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseScreen(
-    viewModel: ExpenseViewModel = hiltViewModel()
+    viewModel: TransaccionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var expanded by remember { mutableStateOf(false) }
@@ -82,12 +82,13 @@ fun ExpenseScreen(
         )
 
         // Selector de categoría
+        // Selector de categoría
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = !expanded }
         ) {
             OutlinedTextField(
-                value = uiState.category,
+                value = uiState.categoryName, // <--- Cambiado de category a categoryName
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Categoría") },
@@ -102,25 +103,18 @@ fun ExpenseScreen(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                viewModel.getCategories().forEach { category ->
+                viewModel.categorias.collectAsState(initial = emptyList()).value.forEach { categoria ->
                     DropdownMenuItem(
-                        text = { Text(category) },
+                        text = { Text(categoria.nombre) },
                         onClick = {
-                            viewModel.onCategoryChange(category)
+                            viewModel.onCategoryChange(categoria.idCategoria, categoria.nombre) // actualizar id y nombre
                             expanded = false
-                        },
-                        leadingIcon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(12.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(getCategoryColor(category))
-                            )
                         }
                     )
                 }
             }
         }
+
 
         // Campo de nota
         OutlinedTextField(
@@ -135,7 +129,7 @@ fun ExpenseScreen(
 
         // Botón de añadir
         Button(
-            onClick = { viewModel.addExpense() },
+            onClick = { viewModel.addTransaccion() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -208,13 +202,13 @@ fun ExpenseScreen(
 }
 
 @Composable
-fun QuickExpenseButtons(viewModel: ExpenseViewModel) {
+fun QuickExpenseButtons(viewModel: TransaccionViewModel) {
     val categories = listOf(
-        "Alimentación" to listOf(10.0, 20.0, 50.0),
-        "Transporte" to listOf(5.0, 10.0, 20.0),
-        "Servicios" to listOf(50.0, 100.0, 200.0),
-        "Ocio" to listOf(30.0, 50.0, 100.0),
-        "Otros" to listOf(10.0, 25.0, 50.0)
+        0 to listOf(10.0, 20.0, 50.0),
+        1 to listOf(5.0, 10.0, 20.0),
+        2 to listOf(50.0, 100.0, 200.0),
+        3 to listOf(30.0, 50.0, 100.0),
+        4 to listOf(10.0, 25.0, 50.0)
     )
 
     Column(
@@ -223,11 +217,11 @@ fun QuickExpenseButtons(viewModel: ExpenseViewModel) {
     ) {
         categories.forEach { (category, amounts) ->
             CategoryQuickButtons(
-                category = category,
+                category = viewModel.getCategoryNameById(category),
                 amounts = amounts,
                 color = getCategoryColor(category),
                 onAmountClick = { amount ->
-                    viewModel.addQuickExpense(amount, category)
+                    viewModel.addQuickTransaccion(amount, category)
                 }
             )
         }

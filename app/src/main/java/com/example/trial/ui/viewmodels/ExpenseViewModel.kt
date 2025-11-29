@@ -2,20 +2,19 @@ package com.example.trial.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.trial.data.local.entities.ExpenseEntity
-import com.example.trial.data.repository.IExpenseRepository
-import com.example.trial.data.repository.GoalRepository
-import com.example.trial.data.repository.BadgeRepository
-import com.example.trial.data.local.entities.BadgeEntity
+import com.example.trial.data.local.entities.TransaccionEntity
+import com.example.trial.data.repository.CategoriaRepository
+import com.example.trial.data.repository.MetaAhorroRepository
+import com.example.trial.data.repository.TransaccionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
-data class ExpenseUiState(
+data class TransaccionUiState(
     val amount: String = "",
-    val category: String = "Alimentación",
+    val categoryId: Int = 0,
+    val categoryName: String = "",
     val note: String = "",
     val isLoading: Boolean = false,
     val showSuccess: Boolean = false,
@@ -23,40 +22,48 @@ data class ExpenseUiState(
 )
 
 @HiltViewModel
-class ExpenseViewModel @Inject constructor(
-    private val expenseRepository: IExpenseRepository,
-    private val goalRepository: GoalRepository,
-    private val badgeRepository: BadgeRepository
+class TransaccionViewModel @Inject constructor(
+    private val transaccionRepository: TransaccionRepository,
+    private val metaAhorroRepository: MetaAhorroRepository,
+    private val categoriaRepository: CategoriaRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ExpenseUiState())
-    val uiState: StateFlow<ExpenseUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(TransaccionUiState())
+    val uiState: StateFlow<TransaccionUiState> = _uiState.asStateFlow()
 
-    private val categories = listOf(
-        "Alimentación",
-        "Transporte",
-        "Servicios",
-        "Ocio",
-        "Otros"
-    )
+    private val _categorias = MutableStateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>>(emptyList())
+    val categorias: StateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>> = _categorias.asStateFlow()
+
+    init {
+        loadCategorias()
+    }
+
+    private fun loadCategorias() {
+        viewModelScope.launch {
+            categoriaRepository.getAllCategorias()
+                .collect { list ->
+                    _categorias.value = list
+                }
+        }
+    }
 
     fun onAmountChange(amount: String) {
         _uiState.update { it.copy(amount = amount) }
     }
 
-    fun onCategoryChange(category: String) {
-        _uiState.update { it.copy(category = category) }
+    fun onCategoryChange(categoryId: Int, categoryName: String) {
+        _uiState.update { it.copy(categoryId = categoryId, categoryName = categoryName) }
     }
 
     fun onNoteChange(note: String) {
         _uiState.update { it.copy(note = note) }
     }
 
-    fun addExpense() {
+    fun addTransaccion() {
         val currentState = _uiState.value
-        val amount = currentState.amount.toDoubleOrNull()
+        val monto = currentState.amount.toDoubleOrNull()
 
-        if (amount == null || amount <= 0) {
+        if (monto == null || monto <= 0) {
             _uiState.update { it.copy(errorMessage = "Monto inválido") }
             return
         }
@@ -65,25 +72,24 @@ class ExpenseViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                val expense = ExpenseEntity(
-                    amount = amount,
-                    category = currentState.category,
-                    note = currentState.note.ifBlank { null },
-                    date = System.currentTimeMillis()
+                val transaccion = TransaccionEntity(
+                    monto = monto,
+                    idCategoria = currentState.categoryId,
+                    descripcion = currentState.note.ifBlank { null },
+                    fecha = System.currentTimeMillis(),
+                    idCuenta = 0
                 )
 
-                expenseRepository.insertExpense(expense)
-                
-                // Actualizar meta si existe
-                updateGoalProgress(currentState.category, amount)
-                
-                // Verificar si se gana insignia
-                checkForBadges(currentState.category, amount)
+                transaccionRepository.addTransaccion(transaccion)
+
+                // Actualizar progreso de meta si existe
+                updateMetaProgress(currentState.categoryId, monto)
 
                 _uiState.update {
-                    ExpenseUiState(
+                    TransaccionUiState(
                         showSuccess = true,
-                        category = currentState.category
+                        categoryId = currentState.categoryId,
+                        categoryName = currentState.categoryName
                     )
                 }
             } catch (e: Exception) {
@@ -97,19 +103,20 @@ class ExpenseViewModel @Inject constructor(
         }
     }
 
-    fun addQuickExpense(amount: Double, category: String) {
+    fun addQuickTransaccion(amount: Double, categoryId: Int) {
         viewModelScope.launch {
             try {
-                val expense = ExpenseEntity(
-                    amount = amount,
-                    category = category,
-                    note = "Gasto rápido",
-                    date = System.currentTimeMillis()
+                val transaccion = TransaccionEntity(
+                    monto = amount,
+                    idCategoria = categoryId,
+                    descripcion = "Transacción rápida",
+                    fecha = System.currentTimeMillis(),
+                    idCuenta = 0
                 )
 
-                expenseRepository.insertExpense(expense)
-                updateGoalProgress(category, amount)
-                
+                transaccionRepository.addTransaccion(transaccion)
+                updateMetaProgress(categoryId, amount)
+
                 _uiState.update { it.copy(showSuccess = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Error: ${e.message}") }
@@ -117,48 +124,20 @@ class ExpenseViewModel @Inject constructor(
         }
     }
 
-    private suspend fun updateGoalProgress(category: String, amount: Double) {
-        val goal = goalRepository.getActiveGoalByCategory(category)
-        if (goal != null) {
-            val newAmount = goal.currentAmount + amount
-            goalRepository.updateCurrentAmount(goal.id, newAmount)
+    fun getCategoryNameById(idCategoria: Int): String {
+        return _categorias.value.firstOrNull { it.idCategoria == idCategoria }?.nombre ?: "Desconocido"
+    }
 
-            if (newAmount >= goal.targetAmount) {
-                goalRepository.markAsCompleted(goal.id)
+    private suspend fun updateMetaProgress(categoryId: Int, amount: Double) {
+        val meta = metaAhorroRepository.getActiveMetaByCategory(categoryId)
+        if (meta != null) {
+            val newAmount = meta.montoActual + amount
+            metaAhorroRepository.actualizarMonto(meta.idMeta, newAmount)
+
+            if (newAmount >= meta.monto) {
+                metaAhorroRepository.marcarComoCompletada(meta.idMeta)
             }
         }
-    }
-
-    private suspend fun checkForBadges(category: String, amount: Double) {
-        val (startOfMonth, endOfMonth) = getCurrentMonthRange()
-        val totalThisMonth = expenseRepository.getTotalByCategoryAndPeriod(category, startOfMonth, endOfMonth)
-        
-        // Insignia por gastar menos de 100 en una categoría
-        if (totalThisMonth < 100) {
-            val badge = BadgeEntity(
-                name = "Ahorrador de $category",
-                description = "Gastaste menos de 100 BoB en $category este mes",
-                type = "saver",
-                earnedDate = System.currentTimeMillis(),
-                iconResName = "ic_badge_saver"
-            )
-            badgeRepository.insertBadge(badge)
-        }
-    }
-
-    private fun getCurrentMonthRange(): Pair<Long, Long> {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        val start = calendar.timeInMillis
-
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        val end = calendar.timeInMillis
-
-        return Pair(start, end)
     }
 
     fun clearSuccess() {
@@ -168,6 +147,4 @@ class ExpenseViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
-
-    fun getCategories() = categories
 }

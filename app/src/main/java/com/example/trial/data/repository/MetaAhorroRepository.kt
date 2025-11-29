@@ -35,6 +35,10 @@ class MetaAhorroRepository @Inject constructor(
         return dao.getByEstado(estado)
     }
 
+    suspend fun getActiveMetaByCategory(categoryId: Int): MetaAhorroEntity? {
+        return dao.getActiveMetaByCategory(categoryId)
+    }
+
     suspend fun actualizarMonto(idMeta: Int, nuevoMonto: Double) {
         dao.actualizarMonto(idMeta, nuevoMonto)
     }
@@ -46,5 +50,10 @@ class MetaAhorroRepository @Inject constructor(
     fun getActiveMetas(): Flow<List<MetaAhorroEntity>>
     {
         return dao.getActiveMetas()
+    }
+
+    // Marcar meta como completada
+    suspend fun marcarComoCompletada(idMeta: Int) {
+        dao.marcarComoCompletada(idMeta)
     }
 }

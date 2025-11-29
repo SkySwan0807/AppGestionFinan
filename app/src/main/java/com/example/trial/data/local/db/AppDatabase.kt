@@ -106,6 +106,8 @@ abstract class AppDatabase : RoomDatabase() {
                     TipoCuentaEntity(nombre = "Tarjeta de crédito", descripcion = "Crédito bancario")
                 )
             )
+
+            db.cuentaDao().insertCuenta(CuentaEntity(idTipo = 2, nombre = "Dinero en Efectivo", descripcion = null, balance = 0.0))
         }
     }
 }

@@ -11,5 +11,5 @@ data class TransaccionEntity(
     val idCuenta: Int,
     val monto: Double,
     val fecha: Long,
-    val descripcion: String
+    val descripcion: String?
 )
