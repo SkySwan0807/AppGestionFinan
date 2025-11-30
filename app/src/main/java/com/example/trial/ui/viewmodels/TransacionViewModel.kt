@@ -11,17 +11,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class TransaccionUiState(
-    val amount: String = "",
-    val categoryId: Int = 0,
-    val categoryName: String = "",
-    val note: String = "",
-    val isLoading: Boolean = false,
-    val showSuccess: Boolean = false,
-    val errorMessage: String? = null,
-    val isIncome: Boolean = false
-)
-
 @HiltViewModel
 class TransaccionViewModel @Inject constructor(
     private val transaccionRepository: TransaccionRepository,
@@ -40,37 +29,49 @@ class TransaccionViewModel @Inject constructor(
     private val _todasLasCategorias = MutableStateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>>(emptyList())
     val todasLasCategorias: StateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>> = _todasLasCategorias.asStateFlow()
 
-    // Cache para la categoría de Ingreso
-    private var ingresoCategory: com.example.trial.data.local.entities.CategoriaEntity? = null
+    // Cache para nombres de categorías por ID
+    private val _categoriasMap = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val categoriasMap: StateFlow<Map<Int, String>> = _categoriasMap.asStateFlow()
+
+    // Estado de carga
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            // Verificar qué categorías hay en la BD
-            val todasCategorias = categoriaRepository.getAllCategorias().first()
-            println("🔍 CATEGORÍAS EN BD: ${todasCategorias.size}")
-            todasCategorias.forEach { categoria ->
-                println("   - ${categoria.idCategoria}: ${categoria.nombre}")
-            }
-        }
         loadCategorias()
     }
 
     private fun loadCategorias() {
         viewModelScope.launch {
+            _isLoading.value = true
+
             categoriaRepository.getAllCategorias().collect { todasLasCategorias ->
                 // Guardar todas las categorías
                 _todasLasCategorias.value = todasLasCategorias
 
-                // Guardar la categoría de Ingreso para uso posterior
-                ingresoCategory = todasLasCategorias.firstOrNull { it.nombre.lowercase() == "ingreso" }
+                // Crear mapa de categorías para búsquedas rápidas
+                val categoriasMap = todasLasCategorias.associate { it.idCategoria to it.nombre }
+                _categoriasMap.value = categoriasMap
 
                 // Filtrar para el selector (excluir "Ingreso")
                 val categoriasFiltradas = todasLasCategorias.filter { it.nombre.lowercase() != "ingreso" }
                 _categoriasFiltradas.value = categoriasFiltradas
+
+                _isLoading.value = false
+
+                println("🔍 Categorías cargadas: ${todasLasCategorias.size}")
+                todasLasCategorias.forEach { cat ->
+                    println("   - ${cat.idCategoria}: ${cat.nombre}")
+                }
             }
         }
     }
 
+    fun getCategoryNameById(idCategoria: Int): String {
+        return _categoriasMap.value[idCategoria] ?: "Cargando..."
+    }
+
+    // ... el resto de tus funciones permanecen igual ...
     fun onAmountChange(amount: String) {
         _uiState.update { it.copy(amount = amount) }
     }
@@ -88,8 +89,9 @@ class TransaccionViewModel @Inject constructor(
 
         if (isIncome) {
             // Si es ingreso, asignar automáticamente la categoría "Ingreso"
-            ingresoCategory?.let { categoria ->
-                onCategoryChange(categoria.idCategoria, categoria.nombre)
+            val ingresoCategory = _todasLasCategorias.value.firstOrNull { it.nombre.lowercase() == "ingreso" }
+            ingresoCategory?.let {
+                onCategoryChange(it.idCategoria, it.nombre)
             }
         } else {
             // Si es gasto, resetear la categoría
@@ -106,10 +108,8 @@ class TransaccionViewModel @Inject constructor(
             return
         }
 
-        // Determinar el monto final (positivo para ingresos, negativo para gastos)
         val monto = if (currentState.isIncome) montoInput else -montoInput
 
-        // Validar que se haya seleccionado una categoría
         if (currentState.categoryId == 0) {
             _uiState.update { it.copy(errorMessage = "Selecciona una categoría") }
             return
@@ -124,12 +124,11 @@ class TransaccionViewModel @Inject constructor(
                     idCategoria = currentState.categoryId,
                     descripcion = currentState.note.ifBlank { null },
                     fecha = System.currentTimeMillis(),
-                    idCuenta = 1 // Asumiendo que la cuenta por defecto es 1
+                    idCuenta = 1
                 )
 
                 transaccionRepository.addTransaccion(transaccion)
 
-                // Actualizar progreso de meta solo si es un gasto (monto negativo)
                 if (monto < 0) {
                     updateMetaProgress(currentState.categoryId, monto)
                 }
@@ -160,7 +159,7 @@ class TransaccionViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val transaccion = TransaccionEntity(
-                    monto = -amount, // rápido siempre es gasto
+                    monto = -amount,
                     idCategoria = categoryId,
                     descripcion = "Transacción rápida",
                     fecha = System.currentTimeMillis(),
@@ -185,12 +184,6 @@ class TransaccionViewModel @Inject constructor(
         }
     }
 
-    fun getCategoryNameById(idCategoria: Int): String {
-        // Buscar en todas las categorías
-        return _todasLasCategorias.value
-            .firstOrNull { it.idCategoria == idCategoria }?.nombre ?: "Desconocido"
-    }
-
     private suspend fun updateMetaProgress(categoryId: Int, amount: Double) {
         try {
             val meta = metaAhorroRepository.getActiveMetaByCategory(categoryId)
@@ -203,7 +196,6 @@ class TransaccionViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Silenciar errores de metas para no interrumpir la transacción principal
             e.printStackTrace()
         }
     }
@@ -216,3 +208,14 @@ class TransaccionViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
     }
 }
+
+data class TransaccionUiState(
+    val amount: String = "",
+    val categoryId: Int = 0,
+    val categoryName: String = "",
+    val note: String = "",
+    val isLoading: Boolean = false,
+    val showSuccess: Boolean = false,
+    val errorMessage: String? = null,
+    val isIncome: Boolean = false
+)

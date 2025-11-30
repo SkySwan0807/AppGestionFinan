@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,14 +26,10 @@ fun ExpenseScreen(
     viewModel: TransaccionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    // Usar categoriasFiltradas para el selector
     val categorias by viewModel.categoriasFiltradas.collectAsState()
-    // Usar todasLasCategorias para el diálogo
-    val todasLasCategorias by viewModel.todasLasCategorias.collectAsState()
 
     var expanded by remember { mutableStateOf(false) }
     var isIngreso by remember { mutableStateOf(false) }
-    var showAllCategories by remember { mutableStateOf(false) }
 
     // Mostrar Snackbar de éxito
     LaunchedEffect(uiState.showSuccess) {
@@ -182,21 +177,6 @@ fun ExpenseScreen(
             }
         }
 
-        // Botón para ver todas las categorías
-        OutlinedButton(
-            onClick = { showAllCategories = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Ver categorías",
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Ver Todas las Categorías")
-        }
-
         // Mensaje de error
         uiState.errorMessage?.let { errorMessage ->
             Card(
@@ -239,135 +219,6 @@ fun ExpenseScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-            }
-        }
-    }
-
-    // Diálogo para mostrar todas las categorías
-    if (showAllCategories) {
-        AlertDialog(
-            onDismissRequest = { showAllCategories = false },
-            title = {
-                Text(
-                    text = "Todas las Categorías",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                AllCategoriesList(categorias = todasLasCategorias)
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showAllCategories = false },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun AllCategoriesList(categorias: List<com.example.trial.data.local.entities.CategoriaEntity>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (categorias.isEmpty()) {
-            Text(
-                text = "No hay categorías disponibles",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp)
-            )
-        } else {
-            categorias.forEach { categoria ->
-                CategoryItem(
-                    categoria = categoria,
-                    modifier = Modifier.fillMaxWidth(),
-                    isIncomeCategory = categoria.nombre.lowercase() == "ingreso"
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CategoryItem(
-    categoria: com.example.trial.data.local.entities.CategoriaEntity,
-    modifier: Modifier = Modifier,
-    isIncomeCategory: Boolean = false
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isIncomeCategory) GreenSuccess.copy(alpha = 0.1f)
-            else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // ID de la categoría
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isIncomeCategory) GreenSuccess
-                        else getCategoryColor(categoria.idCategoria)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = categoria.idCategoria.toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            // Nombre y descripción
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = categoria.nombre,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                categoria.descripcion?.let { descripcion ->
-                    Text(
-                        text = descripcion,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-            }
-
-            // Indicador de categoría de ingreso
-            if (isIncomeCategory) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Categoría de ingreso",
-                    tint = GreenSuccess,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
     }
