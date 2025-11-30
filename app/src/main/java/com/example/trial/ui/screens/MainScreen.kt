@@ -17,7 +17,7 @@ import androidx.navigation.compose.rememberNavController
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Home : Screen("home", "Inicio", Icons.Default.Home)
-    object Expense : Screen("expense", "Gastos", Icons.Default.Add)
+    object Expense : Screen("expense", "Transaciones", Icons.Default.Add)
     object Goal : Screen("goal", "Metas", Icons.Default.Star)
 }
 

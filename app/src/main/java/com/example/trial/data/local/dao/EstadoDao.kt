@@ -16,6 +16,9 @@ interface EstadoDao {
     @Delete
     suspend fun delete(estado: EstadoEntity)
 
+    @Query("SELECT COUNT(*) FROM estados")
+    suspend fun getCount(): Int
+
     @Query("SELECT * FROM estados ORDER BY nombre ASC")
     fun getAll(): Flow<List<EstadoEntity>>
 

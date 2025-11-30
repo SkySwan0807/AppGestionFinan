@@ -10,6 +10,9 @@ interface CuentaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCuenta(cuenta: CuentaEntity)
 
+    @Query("SELECT COUNT(*) FROM cuentas")
+    suspend fun getCount(): Int
+
     @Update
     suspend fun updateCuenta(cuenta: CuentaEntity)
 

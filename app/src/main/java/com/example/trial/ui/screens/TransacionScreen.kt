@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.trial.ui.theme.*
 import com.example.trial.ui.viewmodels.TransaccionViewModel
-
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,12 +27,19 @@ fun ExpenseScreen(
     viewModel: TransaccionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Usar categoriasFiltradas para el selector
+    val categorias by viewModel.categoriasFiltradas.collectAsState()
+    // Usar todasLasCategorias para el diálogo
+    val todasLasCategorias by viewModel.todasLasCategorias.collectAsState()
+
     var expanded by remember { mutableStateOf(false) }
+    var isIngreso by remember { mutableStateOf(false) }
+    var showAllCategories by remember { mutableStateOf(false) }
 
     // Mostrar Snackbar de éxito
     LaunchedEffect(uiState.showSuccess) {
         if (uiState.showSuccess) {
-            kotlinx.coroutines.delay(2000)
+            delay(2000)
             viewModel.clearSuccess()
         }
     }
@@ -52,23 +60,36 @@ fun ExpenseScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
-        // Botones rápidos por categoría
-        Text(
-            text = "Registro Rápido",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-
+        // QuickExpenseButtons → siempre visibles, solo para gastos
         QuickExpenseButtons(viewModel = viewModel)
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-        // Formulario manual
+        // Registro manual
         Text(
             text = "Registro Manual",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
+
+        // Switch ingreso/gasto
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (isIngreso) "Ingreso" else "Gasto",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(
+                checked = isIngreso,
+                onCheckedChange = {
+                    isIngreso = it
+                    viewModel.onIncomeToggle(it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = GreenSuccess,
+                    uncheckedThumbColor = RedWarning
+                )
+            )
+        }
 
         // Campo de monto
         OutlinedTextField(
@@ -80,40 +101,50 @@ fun ExpenseScreen(
             isError = uiState.errorMessage != null && uiState.amount.toDoubleOrNull() == null
         )
 
-        // Selector de categoría
-        // Selector de categoría
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
+        // Selector de categoría (solo si es gasto manual)
+        if (!isIngreso) {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = uiState.categoryName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Categoría") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    categorias.forEach { categoria ->
+                        DropdownMenuItem(
+                            text = { Text(categoria.nombre) },
+                            onClick = {
+                                viewModel.onCategoryChange(categoria.idCategoria, categoria.nombre)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        } else {
+            // Mostrar categoría fija para ingresos
             OutlinedTextField(
-                value = uiState.categoryName, // <--- Cambiado de category a categoryName
+                value = "Ingreso",
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Categoría") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false
             )
-
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                viewModel.categorias.collectAsState(initial = emptyList()).value.forEach { categoria ->
-                    DropdownMenuItem(
-                        text = { Text(categoria.nombre) },
-                        onClick = {
-                            viewModel.onCategoryChange(categoria.idCategoria, categoria.nombre) // actualizar id y nombre
-                            expanded = false
-                        }
-                    )
-                }
-            }
         }
-
 
         // Campo de nota
         OutlinedTextField(
@@ -126,13 +157,15 @@ fun ExpenseScreen(
             maxLines = 4
         )
 
-        // Botón de añadir
+        // Botón de añadir registro manual
         Button(
-            onClick = { viewModel.addTransaccion() },
+            onClick = {
+                viewModel.addTransaccion()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            enabled = !uiState.isLoading,
+            enabled = !uiState.isLoading && uiState.amount.isNotBlank(),
             shape = RoundedCornerShape(12.dp)
         ) {
             if (uiState.isLoading) {
@@ -142,24 +175,37 @@ fun ExpenseScreen(
                 )
             } else {
                 Text(
-                    text = "Añadir Gasto",
+                    text = if (isIngreso) "Añadir Ingreso" else "Añadir Gasto",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
 
+        // Botón para ver todas las categorías
+        OutlinedButton(
+            onClick = { showAllCategories = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Ver categorías",
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Ver Todas las Categorías")
+        }
+
         // Mensaje de error
-        if (uiState.errorMessage != null) {
+        uiState.errorMessage?.let { errorMessage ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = RedWarning.copy(alpha = 0.1f)
-                ),
+                colors = CardDefaults.cardColors(containerColor = RedWarning.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
-                    text = uiState.errorMessage!!,
+                    text = errorMessage,
                     modifier = Modifier.padding(12.dp),
                     color = RedWarning,
                     style = MaterialTheme.typography.bodyMedium
@@ -171,9 +217,7 @@ fun ExpenseScreen(
         if (uiState.showSuccess) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = GreenSuccess.copy(alpha = 0.1f)
-                ),
+                colors = CardDefaults.cardColors(containerColor = GreenSuccess.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Row(
@@ -189,7 +233,7 @@ fun ExpenseScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "¡Gasto registrado exitosamente!",
+                        text = if (isIngreso) "¡Ingreso registrado!" else "¡Gasto registrado!",
                         color = GreenSuccess,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
@@ -198,30 +242,165 @@ fun ExpenseScreen(
             }
         }
     }
+
+    // Diálogo para mostrar todas las categorías
+    if (showAllCategories) {
+        AlertDialog(
+            onDismissRequest = { showAllCategories = false },
+            title = {
+                Text(
+                    text = "Todas las Categorías",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                AllCategoriesList(categorias = todasLasCategorias)
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showAllCategories = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
 }
 
+@Composable
+fun AllCategoriesList(categorias: List<com.example.trial.data.local.entities.CategoriaEntity>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (categorias.isEmpty()) {
+            Text(
+                text = "No hay categorías disponibles",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            categorias.forEach { categoria ->
+                CategoryItem(
+                    categoria = categoria,
+                    modifier = Modifier.fillMaxWidth(),
+                    isIncomeCategory = categoria.nombre.lowercase() == "ingreso"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryItem(
+    categoria: com.example.trial.data.local.entities.CategoriaEntity,
+    modifier: Modifier = Modifier,
+    isIncomeCategory: Boolean = false
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isIncomeCategory) GreenSuccess.copy(alpha = 0.1f)
+            else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // ID de la categoría
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isIncomeCategory) GreenSuccess
+                        else getCategoryColor(categoria.idCategoria)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = categoria.idCategoria.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            // Nombre y descripción
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = categoria.nombre,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                categoria.descripcion?.let { descripcion ->
+                    Text(
+                        text = descripcion,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+            }
+
+            // Indicador de categoría de ingreso
+            if (isIncomeCategory) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Categoría de ingreso",
+                    tint = GreenSuccess,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun QuickExpenseButtons(viewModel: TransaccionViewModel) {
     val categories = listOf(
-        1 to listOf(10.0, 20.0, 50.0),
-        2 to listOf(1.0, 2.0, 2.5),
-        3 to listOf(50.0, 100.0, 200.0),
-        4 to listOf(30.0, 50.0, 100.0),
-        5 to listOf(10.0, 25.0, 50.0)
+        1 to listOf(10.0, 20.0, 50.0),  // Alimentación
+        2 to listOf(1.0, 2.0, 2.5),     // Transporte
+        3 to listOf(50.0, 100.0, 200.0), // Servicios
+        4 to listOf(30.0, 50.0, 100.0),  // Ocio
+        5 to listOf(10.0, 25.0, 50.0)    // Otros
     )
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        categories.forEach { (category, amounts) ->
+        Text(
+            text = "Gastos Rápidos",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        categories.forEach { (categoryId, amounts) ->
             CategoryQuickButtons(
-                category = viewModel.getCategoryNameById(category),
+                category = viewModel.getCategoryNameById(categoryId),
                 amounts = amounts,
-                color = getCategoryColor(category),
+                color = getCategoryColor(categoryId),
                 onAmountClick = { amount ->
-                    viewModel.addQuickTransaccion(amount, category)
+                    viewModel.addQuickTransaccion(amount, categoryId)
                 }
             )
         }
@@ -272,7 +451,7 @@ fun CategoryQuickButtons(
                     )
                 ) {
                     Text(
-                        text = "+${amount.formatDecimal()}",
+                        text = "-${amount.formatDecimal()}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -282,12 +461,11 @@ fun CategoryQuickButtons(
     }
 }
 
-
-    fun Double.formatDecimal(): String {
-        return if (this % 1.0 == 0.0) {
-            this.toInt().toString()  // sin decimales
-        } else {
-            this.toString()          // con decimales
-        }
+// Función de extensión para formatear decimales
+private fun Double.formatDecimal(): String {
+    return if (this % 1.0 == 0.0) {
+        this.toInt().toString()
+    } else {
+        "%.1f".format(this)
     }
-
+}

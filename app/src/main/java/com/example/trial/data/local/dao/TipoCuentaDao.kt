@@ -13,6 +13,9 @@ interface TipoCuentaDao {
     @Update
     suspend fun update(tipo: TipoCuentaEntity)
 
+    @Query("SELECT COUNT(*) FROM tipo_cuentas")
+    suspend fun getCount(): Int
+
     @Delete
     suspend fun delete(tipo: TipoCuentaEntity)
 

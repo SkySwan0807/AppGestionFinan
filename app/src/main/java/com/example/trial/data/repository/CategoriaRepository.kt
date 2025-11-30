@@ -12,8 +12,6 @@ class CategoriaRepository @Inject constructor(
     fun getAllCategorias(): Flow<List<CategoriaEntity>> =
         categoriaDao.getAllCategorias()
 
-    fun getNombresCategorias(): Flow<List<CategoriaEntity>> =
-        categoriaDao.getNombresCategorias()
 
 
     suspend fun addCategoria(categoria: CategoriaEntity) {

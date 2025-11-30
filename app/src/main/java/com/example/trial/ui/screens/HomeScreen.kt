@@ -291,7 +291,7 @@ fun TransaccionItem(transaccion: TransaccionEntity) {
                 )
             }
             Text(
-                text = "-${formatCurrency(transaccion.monto)} BoB",
+                text = "${formatCurrency(transaccion.monto)} BoB",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = RedWarning
