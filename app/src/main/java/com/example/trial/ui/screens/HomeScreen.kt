@@ -290,15 +290,20 @@ fun TransaccionItem(transaccion: TransaccionEntity) {
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
+
+            // Color según valor del monto
+            val montoColor = if (transaccion.monto >= 0) GreenSuccess else RedWarning
+
             Text(
                 text = "${formatCurrency(transaccion.monto)} BoB",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = RedWarning
+                color = montoColor
             )
         }
     }
 }
+
 
 fun getCategoryColor(category: Int): Color {
     return when (category) {
