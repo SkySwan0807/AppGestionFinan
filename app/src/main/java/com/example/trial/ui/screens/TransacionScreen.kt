@@ -1,7 +1,6 @@
 package com.example.trial.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -201,14 +200,15 @@ fun ExpenseScreen(
     }
 }
 
+
 @Composable
 fun QuickExpenseButtons(viewModel: TransaccionViewModel) {
     val categories = listOf(
-        0 to listOf(10.0, 20.0, 50.0),
-        1 to listOf(5.0, 10.0, 20.0),
-        2 to listOf(50.0, 100.0, 200.0),
-        3 to listOf(30.0, 50.0, 100.0),
-        4 to listOf(10.0, 25.0, 50.0)
+        1 to listOf(10.0, 20.0, 50.0),
+        2 to listOf(1.0, 2.0, 2.5),
+        3 to listOf(50.0, 100.0, 200.0),
+        4 to listOf(30.0, 50.0, 100.0),
+        5 to listOf(10.0, 25.0, 50.0)
     )
 
     Column(
@@ -238,6 +238,7 @@ fun CategoryQuickButtons(
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
+        // Encabezado con color y nombre de categoría
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -256,6 +257,7 @@ fun CategoryQuickButtons(
             )
         }
 
+        // Botones de montos
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -270,7 +272,7 @@ fun CategoryQuickButtons(
                     )
                 ) {
                     Text(
-                        text = "+${amount.toInt()}",
+                        text = "+${amount.formatDecimal()}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -279,3 +281,13 @@ fun CategoryQuickButtons(
         }
     }
 }
+
+
+    fun Double.formatDecimal(): String {
+        return if (this % 1.0 == 0.0) {
+            this.toInt().toString()  // sin decimales
+        } else {
+            this.toString()          // con decimales
+        }
+    }
+

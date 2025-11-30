@@ -302,10 +302,10 @@ fun TransaccionItem(transaccion: TransaccionEntity) {
 
 fun getCategoryColor(category: Int): Color {
     return when (category) {
-        0 -> FoodColor
-        1 -> TransportColor
-        2 -> ServicesColor
-        3 -> LeisureColor
+        1 -> FoodColor
+        2 -> TransportColor
+        3 -> ServicesColor
+        4 -> LeisureColor
         else -> OthersColor
     }
 }
@@ -324,10 +324,10 @@ fun formatDate(timestamp: Long): String {
 
 fun getCategoryName(id: Int): String {
     return when (id) {
-        0 -> "Comida"
-        1 -> "Transporte"
-        2 -> "Servicios"
-        3 -> "Ocio"
+        1 -> "Comida"
+        2 -> "Transporte"
+        3 -> "Servicios"
+        4 -> "Ocio"
         else -> "Otros"
     }
 }

@@ -42,13 +42,15 @@ class HomeViewModel @Inject constructor(
             combine(
                 transaccionRepository.getTransfersBetween(startOfMonth, endOfMonth),
                 transaccionRepository.getSumByCategory(startOfMonth, endOfMonth),
-                transaccionRepository.getAllTransacciones()
-            ) { currentMonth, breakdown, all ->
+                transaccionRepository.getAllTransacciones(),
+                transaccionRepository.totalSpending()   // ← AQUÍ USAMOS FLOW CORRECTO
+            ) { currentMonth, breakdown, all, totalBalanceFlow ->
+
                 val monthlyTotal = currentMonth.sumOf { it.monto }
                 val lastMonthTotal = calculateLastMonthTotal(startLastMonth, endLastMonth)
 
                 HomeUiState(
-                    totalBalance = 1000.0, // Ajustar según tu configuración
+                    totalBalance = totalBalanceFlow ?: 0.0,   // ← YA ES DOUBLE
                     monthlyTransfers = monthlyTotal,
                     categoryBreakdown = breakdown,
                     recentTransfers = all.take(10),

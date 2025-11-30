@@ -17,7 +17,7 @@ interface TransaccionDao {
     fun getAllTransacciones(): Flow<List<TransaccionEntity>>
 
 
-    @Query("SELECT SUM(monto) FROM transacciones ORDER BY fecha DESC")
+    @Query("SELECT SUM(monto) FROM transacciones")
     fun totalSpending(): Flow<Double?>
 
     @Query("SELECT SUM(monto) FROM transacciones WHERE idCuenta = :idCuenta")

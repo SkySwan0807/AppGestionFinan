@@ -31,7 +31,7 @@ class TransaccionRepository @Inject constructor(
         return transaccionDao.getTotalBetween(startTs, endTs) ?: 0.0
     }
 
-    fun totalSpending(): Double =
+    fun totalSpending(): Flow<Double?> =
         transaccionDao.totalSpending()
 
 

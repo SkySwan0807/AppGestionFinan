@@ -31,6 +31,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun tipoCuentaDao(): TipoCuentaDao
     abstract fun estadoDao(): EstadoDao
 
+    abstract fun metaAhorroDao(): MetaAhorroDao
+
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null

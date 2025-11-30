@@ -6,6 +6,7 @@ import com.example.trial.data.local.dao.CategoriaDao
 import com.example.trial.data.local.dao.EstadoDao
 import com.example.trial.data.local.dao.TipoCuentaDao
 import com.example.trial.data.local.dao.CuentaDao
+import com.example.trial.data.local.dao.MetaAhorroDao
 import com.example.trial.data.local.dao.TransaccionDao
 import dagger.Module
 import dagger.Provides
@@ -48,4 +49,8 @@ object DatabaseModule {
     fun provideTransaccionDao(database: AppDatabase): TransaccionDao {
         return database.transaccionDao()
     }
+
+    @Provides
+    fun provideMetaAhorroDao(db: AppDatabase): MetaAhorroDao =
+        db.metaAhorroDao()
 }
