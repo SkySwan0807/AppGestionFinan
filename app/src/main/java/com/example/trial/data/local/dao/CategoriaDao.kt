@@ -16,9 +16,15 @@ interface CategoriaDao {
     @Query("SELECT * FROM categorias ORDER BY nombre ASC")
     fun getAllCategorias(): Flow<List<CategoriaEntity>>
 
-    @Query("SELECT nombre FROM categorias")
+    @Query("SELECT * FROM categorias")
     fun getNombresCategorias(): Flow<List<CategoriaEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(categorias: List<CategoriaEntity>)
 }
+
+data class CategorySum(
+    val idCategoria: Int,
+    val category: String,
+    val total: Double
+)

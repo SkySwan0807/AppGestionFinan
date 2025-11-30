@@ -3,9 +3,8 @@ package com.example.trial.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.trial.data.local.dao.CategorySum
-import com.example.trial.data.local.entities.ExpenseEntity
-import com.example.trial.data.repository.IExpenseRepository
-import com.example.trial.data.repository.GoalRepository
+import com.example.trial.data.local.entities.TransaccionEntity
+import com.example.trial.data.repository.TransaccionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,17 +13,16 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val totalBalance: Double = 0.0,
-    val monthlyExpenses: Double = 0.0,
+    val monthlyTransfers: Double = 0.0,
     val categoryBreakdown: List<CategorySum> = emptyList(),
-    val recentExpenses: List<ExpenseEntity> = emptyList(),
+    val recentTransfers: List<TransaccionEntity> = emptyList(),
     val comparisonWithLastMonth: Double = 0.0,
     val isLoading: Boolean = false
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val expenseRepository: IExpenseRepository,
-    private val goalRepository: GoalRepository
+    private val transaccionRepository: TransaccionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -42,18 +40,18 @@ class HomeViewModel @Inject constructor(
             val (startLastMonth, endLastMonth) = getLastMonthRange()
 
             combine(
-                expenseRepository.getExpensesBetween(startOfMonth, endOfMonth),
-                expenseRepository.getSumByCategory(startOfMonth, endOfMonth),
-                expenseRepository.getAllExpenses()
+                transaccionRepository.getTransfersBetween(startOfMonth, endOfMonth),
+                transaccionRepository.getSumByCategory(startOfMonth, endOfMonth),
+                transaccionRepository.getAllTransacciones()
             ) { currentMonth, breakdown, all ->
-                val monthlyTotal = currentMonth.sumOf { it.amount }
+                val monthlyTotal = currentMonth.sumOf { it.monto }
                 val lastMonthTotal = calculateLastMonthTotal(startLastMonth, endLastMonth)
-                
+
                 HomeUiState(
-                    totalBalance = 1000.0, // Esto debería venir de configuración
-                    monthlyExpenses = monthlyTotal,
+                    totalBalance = 1000.0, // Ajustar según tu configuración
+                    monthlyTransfers = monthlyTotal,
                     categoryBreakdown = breakdown,
-                    recentExpenses = all.take(10),
+                    recentTransfers = all.take(10),
                     comparisonWithLastMonth = lastMonthTotal - monthlyTotal,
                     isLoading = false
                 )
@@ -64,7 +62,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun calculateLastMonthTotal(start: Long, end: Long): Double {
-        return expenseRepository.getTotalBetween(start, end)
+        return transaccionRepository.getTotalBetween(start, end)
     }
 
     private fun getCurrentMonthRange(): Pair<Long, Long> {

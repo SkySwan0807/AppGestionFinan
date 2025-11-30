@@ -1,5 +1,6 @@
 package com.example.trial.data.repository
 
+import com.example.trial.data.local.dao.CategorySum
 import com.example.trial.data.local.dao.TransaccionDao
 import com.example.trial.data.local.entities.TransaccionEntity
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,20 @@ class TransaccionRepository @Inject constructor(
     suspend fun getTotalByCategoriaAndPeriod(idCategoria: Int, start: Long, end: Long): Double {
         return transaccionDao.getTotalPorCategoriaYPeriodo(idCategoria, start, end) ?: 0.0
     }
+
+    fun getSumByCategory(startTs: Long, endTs: Long): Flow<List<CategorySum>> =
+        transaccionDao.getSumByCategory(startTs, endTs)
+
+    fun getTransfersBetween(startTs: Long, endTs: Long): Flow<List<TransaccionEntity>> =
+        transaccionDao.getTransfersBetween(startTs, endTs)
+
+    suspend fun getTotalBetween(startTs: Long, endTs: Long): Double {
+        return transaccionDao.getTotalBetween(startTs, endTs) ?: 0.0
+    }
+
+    fun totalSpending(): Double =
+        transaccionDao.totalSpending()
+
 
     // Escritura
     suspend fun addTransaccion(transaccion: TransaccionEntity) {

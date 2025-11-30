@@ -18,7 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.trial.data.local.entities.ExpenseEntity
+import com.example.trial.data.local.dao.CategorySum
+import com.example.trial.data.local.entities.TransaccionEntity
 import com.example.trial.ui.theme.*
 import com.example.trial.ui.viewmodels.HomeViewModel
 import java.text.NumberFormat
@@ -38,7 +39,8 @@ fun HomeScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header con logo
+
+        // Header
         item {
             Box(
                 modifier = Modifier
@@ -85,7 +87,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Gastado este mes: ${formatCurrency(uiState.monthlyExpenses)} BoB",
+                        text = "Gasto este mes: ${formatCurrency(uiState.monthlyTransfers)} BoB",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.8f)
                     )
@@ -98,7 +100,7 @@ fun HomeScreen(
             ComparisonCard(comparison = uiState.comparisonWithLastMonth)
         }
 
-        // Título de Gestión
+        // Título gestión
         item {
             Text(
                 text = "Gestión",
@@ -116,15 +118,15 @@ fun HomeScreen(
         // Historial reciente
         item {
             Text(
-                text = "Gastos Recientes",
+                text = "Transacciones recientes",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
 
-        items(uiState.recentExpenses.take(10)) { expense ->
-            ExpenseItem(expense = expense)
+        items(uiState.recentTransfers.take(10)) { transaccion ->
+            TransaccionItem(transaccion = transaccion)
         }
     }
 }
@@ -135,8 +137,8 @@ fun ComparisonCard(comparison: Double) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (comparison >= 0) GreenSuccess.copy(alpha = 0.1f) 
-                           else RedWarning.copy(alpha = 0.1f)
+            containerColor = if (comparison >= 0) GreenSuccess.copy(alpha = 0.1f)
+            else RedWarning.copy(alpha = 0.1f)
         )
     ) {
         Row(
@@ -164,8 +166,8 @@ fun ComparisonCard(comparison: Double) {
                 )
             }
             Icon(
-                imageVector = if (comparison >= 0) Icons.Filled.TrendingDown 
-                             else Icons.Filled.TrendingUp,
+                imageVector = if (comparison >= 0) Icons.Filled.TrendingDown
+                else Icons.Filled.TrendingUp,
                 contentDescription = null,
                 tint = if (comparison >= 0) GreenSuccess else RedWarning,
                 modifier = Modifier.size(48.dp)
@@ -175,7 +177,7 @@ fun ComparisonCard(comparison: Double) {
 }
 
 @Composable
-fun CategoryBreakdownCard(categories: List<com.example.trial.data.local.dao.CategorySum>) {
+fun CategoryBreakdownCard(categories: List<CategorySum>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -187,7 +189,7 @@ fun CategoryBreakdownCard(categories: List<com.example.trial.data.local.dao.Cate
                 .padding(16.dp)
         ) {
             Text(
-                text = "Gastos por Categoría",
+                text = "Transacciones por categoría",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -201,7 +203,7 @@ fun CategoryBreakdownCard(categories: List<com.example.trial.data.local.dao.Cate
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No hay gastos registrados",
+                        text = "No hay transacciones registradas",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -211,7 +213,7 @@ fun CategoryBreakdownCard(categories: List<com.example.trial.data.local.dao.Cate
                     CategoryRow(
                         category = category.category,
                         amount = category.total,
-                        color = getCategoryColor(category.category)
+                        color = getCategoryColor(category.idCategoria)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -254,7 +256,7 @@ fun CategoryRow(category: String, amount: Double, color: Color) {
 }
 
 @Composable
-fun ExpenseItem(expense: ExpenseEntity) {
+fun TransaccionItem(transaccion: TransaccionEntity) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -271,25 +273,25 @@ fun ExpenseItem(expense: ExpenseEntity) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = expense.category,
+                    text = getCategoryName(transaccion.idCategoria),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                if (!expense.note.isNullOrBlank()) {
+                if (!transaccion.descripcion.isNullOrBlank()) {
                     Text(
-                        text = expense.note,
+                        text = transaccion.descripcion,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 Text(
-                    text = formatDate(expense.date),
+                    text = formatDate(transaccion.fecha),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
             Text(
-                text = "-${formatCurrency(expense.amount)} BoB",
+                text = "-${formatCurrency(transaccion.monto)} BoB",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = RedWarning
@@ -318,4 +320,14 @@ fun formatCurrency(value: Double): String {
 fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("es", "BO"))
     return sdf.format(Date(timestamp))
+}
+
+fun getCategoryName(id: Int): String {
+    return when (id) {
+        0 -> "Comida"
+        1 -> "Transporte"
+        2 -> "Servicios"
+        3 -> "Ocio"
+        else -> "Otros"
+    }
 }
