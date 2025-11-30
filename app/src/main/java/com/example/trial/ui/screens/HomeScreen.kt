@@ -87,7 +87,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Gasto este mes: ${formatCurrency(uiState.monthlyTransfers)} BoB",
+                        text = "Gasto este mes: ${formatCurrency(uiState.monthlyexpenses)} BoB",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.8f)
                     )

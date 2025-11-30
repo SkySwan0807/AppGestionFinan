@@ -13,7 +13,8 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val totalBalance: Double = 0.0,
-    val monthlyTransfers: Double = 0.0,
+    val monthlyexpenses: Double = 0.0,
+    val totalSpending: Double = 0.0,
     val categoryBreakdown: List<CategorySum> = emptyList(),
     val recentTransfers: List<TransaccionEntity> = emptyList(),
     val comparisonWithLastMonth: Double = 0.0,
@@ -39,22 +40,33 @@ class HomeViewModel @Inject constructor(
             val (startOfMonth, endOfMonth) = getCurrentMonthRange()
             val (startLastMonth, endLastMonth) = getLastMonthRange()
 
-            combine(
-                transaccionRepository.getTransfersBetween(startOfMonth, endOfMonth),
-                transaccionRepository.getSumByCategory(startOfMonth, endOfMonth),
-                transaccionRepository.getAllTransacciones(),
-                transaccionRepository.totalSpending()   // ← AQUÍ USAMOS FLOW CORRECTO
-            ) { currentMonth, breakdown, all, totalBalanceFlow ->
+            // Obtenemos flujos de datos
+            val monthlyTransactionsFlow = transaccionRepository.getTransfersBetween(startOfMonth, endOfMonth)
+            val categoryBreakdownFlow = transaccionRepository.getSumByCategory(startOfMonth, endOfMonth)
+            val allTransactionsFlow = transaccionRepository.getAllTransacciones()
+            val totalSpendingFlow = transaccionRepository.totalSpending()
 
-                val monthlyTotal = currentMonth.sumOf { it.monto }
+            combine(
+                monthlyTransactionsFlow,
+                categoryBreakdownFlow,
+                allTransactionsFlow,
+                totalSpendingFlow
+            ) { monthlyTxs, breakdown, allTxs, totalSpending ->
+
+                val monthlyExpenses = monthlyTxs
+                    .filter { it.monto < 0 }  // solo gastos
+                    .sumOf { it.monto }
+
+                val totalBalance = totalSpending ?: 0.0
                 val lastMonthTotal = calculateLastMonthTotal(startLastMonth, endLastMonth)
 
                 HomeUiState(
-                    totalBalance = totalBalanceFlow ?: 0.0,   // ← YA ES DOUBLE
-                    monthlyTransfers = monthlyTotal,
+                    totalBalance = totalBalance,
+                    monthlyexpenses = monthlyExpenses,
+                    totalSpending = totalBalance,
                     categoryBreakdown = breakdown,
-                    recentTransfers = all.take(10),
-                    comparisonWithLastMonth = lastMonthTotal - monthlyTotal,
+                    recentTransfers = allTxs.take(10),
+                    comparisonWithLastMonth = lastMonthTotal - monthlyExpenses,
                     isLoading = false
                 )
             }.collect { state ->
@@ -78,6 +90,7 @@ class HomeViewModel @Inject constructor(
         calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
         calendar.set(Calendar.HOUR_OF_DAY, 23)
         calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
         val endOfMonth = calendar.timeInMillis
 
         return Pair(startOfMonth, endOfMonth)
@@ -89,11 +102,13 @@ class HomeViewModel @Inject constructor(
         calendar.set(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
         val startLastMonth = calendar.timeInMillis
 
         calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
         calendar.set(Calendar.HOUR_OF_DAY, 23)
         calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
         val endLastMonth = calendar.timeInMillis
 
         return Pair(startLastMonth, endLastMonth)
