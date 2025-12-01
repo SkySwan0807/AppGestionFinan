@@ -70,7 +70,7 @@ fun ExpenseScreen(
         // Switch ingreso/gasto
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = if (isIngreso) "Ingreso" else "Gasto",
+                text = if (isIngreso) "Ingreso " else "Gasto ",
                 style = MaterialTheme.typography.bodyMedium
             )
             Switch(
