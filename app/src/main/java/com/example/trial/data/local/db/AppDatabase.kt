@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.trial.data.local.dao.*
 import com.example.trial.data.local.entities.*
@@ -20,7 +21,7 @@ import kotlinx.coroutines.launch
         MetaAhorroEntity::class,
         TransaccionEntity::class
     ],
-    version = 6, // Incrementa la versión para forzar recreación
+    version = 7, // Incrementa la versión para forzar recreación
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,8 +44,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "finanzas_db"
                 )
+                    .addMigrations(Migration6to7()) // <-- AGREGADA la migración
                     .fallbackToDestructiveMigration() // Esto borra y recrea la BD
-                    .addCallback(object : RoomDatabase.Callback() {
+                    .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             // Se ejecuta cuando la BD se crea por primera vez
@@ -140,6 +142,19 @@ abstract class AppDatabase : RoomDatabase() {
             } catch (e: Exception) {
                 println("❌ ERROR en prepoblación: ${e.message}")
                 e.printStackTrace()
+            }
+        }
+
+        private class Migration6to7 : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    ALTER TABLE transacciones 
+                    ADD COLUMN borradoLogico INTEGER NOT NULL DEFAULT 0
+                """.trimIndent())
+                db.execSQL("""
+                    ALTER TABLE transacciones 
+                    ADD COLUMN fechaBorrado INTEGER
+                """.trimIndent())
             }
         }
     }

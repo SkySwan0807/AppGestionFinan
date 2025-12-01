@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 
 data class HomeUiState(
     val totalBalance: Double = 0.0,
@@ -40,13 +42,32 @@ class HomeViewModel @Inject constructor(
             val (startOfMonth, endOfMonth) = getCurrentMonthRange()
             val (startLastMonth, endLastMonth) = getLastMonthRange()
 
-            // Obtenemos flujos de datos
-            val monthlyTransactionsFlow = transaccionRepository.getTransfersBetween(startOfMonth, endOfMonth)
-            val categoryBreakdownFlow = transaccionRepository.getSumByCategory(startOfMonth, endOfMonth)
-            val allTransactionsFlow = transaccionRepository.getAllTransacciones()
-            val totalSpendingFlow = transaccionRepository.totalSpending()
+            // Flows que expone tu TransaccionRepository
+            val monthlyTransactionsFlow =
+                transaccionRepository.getTransfersBetweenActivas(startOfMonth, endOfMonth)
+            val categoryBreakdownFlow =
+                transaccionRepository.getSumByCategoryActivas(startOfMonth, endOfMonth)
+            val allTransactionsFlow =
+                transaccionRepository.getAllTransaccionesActivas()
+            val totalSpendingFlow =
+                transaccionRepository.totalSpendingActivas()
 
-            combine(
+
+
+            // Total del mes pasado (suspend)
+            val lastMonthTotal = try {
+                transaccionRepository.getTotalBetween(startLastMonth, endLastMonth)
+            } catch (e: Exception) {
+                0.0
+            }
+
+            combine<
+                    List<TransaccionEntity>,
+                    List<CategorySum>,
+                    List<TransaccionEntity>,
+                    Double?,
+                    HomeUiState
+                    >(
                 monthlyTransactionsFlow,
                 categoryBreakdownFlow,
                 allTransactionsFlow,
@@ -54,11 +75,10 @@ class HomeViewModel @Inject constructor(
             ) { monthlyTxs, breakdown, allTxs, totalSpending ->
 
                 val monthlyExpenses = monthlyTxs
-                    .filter { it.monto < 0 }  // solo gastos
+                    .filter { it.monto < 0.0 }
                     .sumOf { it.monto }
 
                 val totalBalance = totalSpending ?: 0.0
-                val lastMonthTotal = calculateLastMonthTotal(startLastMonth, endLastMonth)
 
                 HomeUiState(
                     totalBalance = totalBalance,
@@ -69,14 +89,14 @@ class HomeViewModel @Inject constructor(
                     comparisonWithLastMonth = lastMonthTotal - monthlyExpenses,
                     isLoading = false
                 )
-            }.collect { state ->
-                _uiState.value = state
             }
+                .catch {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+                .collect { state ->
+                    _uiState.value = state
+                }
         }
-    }
-
-    private suspend fun calculateLastMonthTotal(start: Long, end: Long): Double {
-        return transaccionRepository.getTotalBetween(start, end)
     }
 
     private fun getCurrentMonthRange(): Pair<Long, Long> {

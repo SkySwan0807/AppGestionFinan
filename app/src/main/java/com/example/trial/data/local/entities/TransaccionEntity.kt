@@ -1,5 +1,6 @@
 package com.example.trial.data.local.entities
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -11,5 +12,7 @@ data class TransaccionEntity(
     val idCuenta: Int,
     val monto: Double,
     val fecha: Long,
-    val descripcion: String?
+    val descripcion: String?,
+    val borradoLogico: Boolean = false,
+    val fechaBorrado: Long? = null
 )

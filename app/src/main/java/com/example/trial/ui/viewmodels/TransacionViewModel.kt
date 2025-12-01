@@ -36,9 +36,16 @@ class TransaccionViewModel @Inject constructor(
     // Estado de carga
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _eliminarDialog = MutableStateFlow(false)
+    val eliminarDialog: StateFlow<Boolean> = _eliminarDialog.asStateFlow()
+
+    private val _transaccionAEliminar = MutableStateFlow<TransaccionEntity?>(null)
+    val transaccionAEliminar: StateFlow<TransaccionEntity?> = _transaccionAEliminar.asStateFlow()
+
 
     init {
         loadCategorias()
+        loadTransacciones()
     }
 
     private fun loadCategorias() {
@@ -66,6 +73,7 @@ class TransaccionViewModel @Inject constructor(
             }
         }
     }
+
 
     fun getCategoryNameById(idCategoria: Int): String {
         return _categoriasMap.value[idCategoria] ?: "Cargando..."
@@ -183,6 +191,55 @@ class TransaccionViewModel @Inject constructor(
             }
         }
     }
+    fun onEliminarTransaccion(transaccion: TransaccionEntity) {
+        _transaccionAEliminar.value = transaccion
+        _eliminarDialog.value = true
+    }
+
+    fun confirmarEliminar() {
+        viewModelScope.launch {
+            _transaccionAEliminar.value?.let { transaccion ->
+                try {
+                    val exito = transaccionRepository.softDeleteTransaccion(transaccion.idTransaccion)
+                    if (exito) {
+                        _uiState.update {
+                            it.copy(
+                                showSuccess = true,
+                                errorMessage = null,
+                                amount = "",
+                                note = "",
+                                categoryId = 0,
+                                categoryName = "",
+                                isIncome = false
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(errorMessage = "Error al eliminar transacción") }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(errorMessage = "Error: ${e.message}") }
+                }
+            }
+            _eliminarDialog.value = false
+            _transaccionAEliminar.value = null
+        }
+    }
+
+    fun cancelarEliminar() {
+        _eliminarDialog.value = false
+        _transaccionAEliminar.value = null
+    }
+    fun loadTransacciones() {
+        viewModelScope.launch {
+            transaccionRepository.getAllTransaccionesActivas().collect { transacciones ->
+                _uiState.update { it.copy(
+                    transacciones = transacciones,
+                    isLoading = false
+                ) }
+            }
+        }
+    }
+
 
     private suspend fun updateMetaProgress(categoryId: Int, amount: Double) {
         try {
@@ -210,6 +267,7 @@ class TransaccionViewModel @Inject constructor(
 }
 
 data class TransaccionUiState(
+    val transacciones: List<TransaccionEntity> = emptyList(),
     val amount: String = "",
     val categoryId: Int = 0,
     val categoryName: String = "",
