@@ -2,7 +2,9 @@ package com.example.trial.data.repository
 
 import com.example.trial.data.local.dao.MetaAhorroDao
 import com.example.trial.data.local.entities.MetaAhorroEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -44,12 +46,11 @@ class MetaAhorroRepository @Inject constructor(
     }
 
     fun getMetasVigentes(fechaActual: Long): Flow<List<MetaAhorroEntity>> {
-        return dao.getMetasVigentes(fechaActual)
+        return dao.getMetasVigentes(fechaActual).flowOn(Dispatchers.IO)
     }
 
-    fun getActiveMetas(): Flow<List<MetaAhorroEntity>>
-    {
-        return dao.getActiveMetas()
+    fun getActiveMetas(): Flow<List<MetaAhorroEntity>> {
+        return dao.getActiveMetas().flowOn(Dispatchers.IO)
     }
 
     // Marcar meta como completada
