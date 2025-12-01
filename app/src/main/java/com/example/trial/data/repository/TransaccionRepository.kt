@@ -39,4 +39,12 @@ class TransaccionRepository @Inject constructor(
     suspend fun addTransaccion(transaccion: TransaccionEntity) {
         transaccionDao.insertTransaccion(transaccion)
     }
+
+    suspend fun updateTransaccion(transaccion: TransaccionEntity) {
+        transaccionDao.updateTransaccion(transaccion)
+    }
+
+    suspend fun deleteTransaccion(transaccion: TransaccionEntity) {
+        transaccionDao.deleteTransaccion(transaccion)
+    }
 }

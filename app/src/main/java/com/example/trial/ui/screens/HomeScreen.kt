@@ -311,7 +311,8 @@ fun getCategoryColor(category: Int): Color {
         2 -> TransportColor
         3 -> ServicesColor
         4 -> LeisureColor
-        else -> OthersColor
+        5 -> OthersColor
+        else -> GreenSuccess
     }
 }
 
