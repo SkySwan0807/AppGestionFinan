@@ -97,7 +97,7 @@ fun HomeScreen(
 
         // Comparación mensual
         item {
-            ComparisonCard(comparison = uiState.comparisonWithLastMonth)
+            ComparisonCard(comparison = uiState.monthlyexpenses)
         }
 
         // Título gestión
@@ -125,7 +125,7 @@ fun HomeScreen(
             )
         }
 
-        items(uiState.recentTransfers.take(10)) { transaccion ->
+        items(uiState.recentTransfers.take(5)) { transaccion ->
             TransaccionItem(transaccion = transaccion)
         }
     }

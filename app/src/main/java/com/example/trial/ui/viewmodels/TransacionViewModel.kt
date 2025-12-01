@@ -161,7 +161,7 @@ class TransaccionViewModel @Inject constructor(
                 val transaccion = TransaccionEntity(
                     monto = -amount,
                     idCategoria = categoryId,
-                    descripcion = "Transacción rápida",
+                    descripcion = "Gasto rápido",
                     fecha = System.currentTimeMillis(),
                     idCuenta = 1
                 )
