@@ -25,13 +25,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.trial.ui.viewmodels.FiltrosUI
 
 
 @Composable
 fun HistorialScreen(
     viewModel: HistorialViewModel = hiltViewModel()
 ) {
-    val historial = viewModel.historial.collectAsState()
+    val historial = viewModel._historial.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
 
@@ -57,6 +58,7 @@ fun HistorialItem(
     transaccion: TransaccionEntity,
     viewModel: HistorialViewModel = hiltViewModel()
 ) {
+    var filtros by remember { mutableStateOf(FiltrosUI()) }
     var expanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) } // Estado para el diálogo
 
