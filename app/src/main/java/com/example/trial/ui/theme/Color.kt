@@ -12,6 +12,12 @@ val Error = Color(0xFFB00020)
 // Custom colors
 val GreenSuccess = Color(0xFF4CAF50)
 val RedWarning = Color(0xFFF44336)
+
+
+// Colores más claros para el track
+val GreenSuccessLight = Color(0xFFA5D6A7)  // verde claro para track
+
+val RedWarningLight   = Color(0xFFEF9A9A)  // rojo claro para track
 val OrangeMedium = Color(0xFFFF9800)
 
 val BlueInfo = Color(0xFF2196F3)

@@ -34,8 +34,6 @@ fun HistorialScreen(
     viewModel: HistorialViewModel = hiltViewModel()
 ) {
     val historial by viewModel.historialFiltrado.collectAsState()
-    var selectedCategory by remember { mutableStateOf(0) }
-    var expanded by remember { mutableStateOf(false) }
 
     val categories = listOf(
         0 to "Todas",
@@ -359,10 +357,12 @@ fun FiltrosDialog(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        showDialog = false
                         montoMin = ""
                         montoMax = ""
+                        onMontoMax("")
+                        onMontoMin("")
                         onCategorySelected(0)
+                        showDialog = false
                     }
                 ) {
                     Text("Eliminar Filtros")

@@ -28,7 +28,7 @@ fun ExpenseScreen(
     viewModel: TransaccionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val categorias by viewModel.categoriasFiltradas.collectAsState()
+    val categorias by viewModel.catFiltrado.collectAsState()
 
     var expanded by remember { mutableStateOf(false) }
     var isIngreso by remember { mutableStateOf(false) }
@@ -84,7 +84,9 @@ fun ExpenseScreen(
                 },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = GreenSuccess,
-                    uncheckedThumbColor = RedWarning
+                    checkedTrackColor = GreenSuccessLight,
+                    uncheckedThumbColor = RedWarning,
+                    uncheckedTrackColor = RedWarningLight
                 )
             )
         }
@@ -252,7 +254,7 @@ fun QuickExpenseButtons(viewModel: TransaccionViewModel) {
 
         categories.forEach { (categoryId, amounts) ->
             CategoryQuickButtons(
-                category = viewModel.getCategoryNameById(categoryId),
+                category = getCategoryName(categoryId),
                 amounts = amounts,
                 color = getCategoryColor(categoryId),
                 onAmountClick = { amount ->
