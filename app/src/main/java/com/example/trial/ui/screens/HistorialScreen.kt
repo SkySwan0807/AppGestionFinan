@@ -25,14 +25,25 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.trial.ui.viewmodels.FiltrosUI
 
 
 @Composable
 fun HistorialScreen(
     viewModel: HistorialViewModel = hiltViewModel()
 ) {
-    val historial = viewModel._historial.collectAsState()
+    val historial by viewModel.historialFiltrado.collectAsState()
+    var selectedCategory by remember { mutableStateOf(0) }
+    var expanded by remember { mutableStateOf(false) }
+
+    val categories = listOf(
+        0 to "Todas",
+        1 to "Comida",
+        2 to "Transporte",
+        3 to "Servicios",
+        4 to "Ocio",
+        5 to "Otros",
+        6 to "Ingresos"
+    )
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
 
@@ -45,9 +56,26 @@ fun HistorialScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn {
-            items(historial.value) { transaccion ->
-                HistorialItem(transaccion)
+        var selectedCategory by remember { mutableStateOf(0) }
+
+        FiltrosDialog(
+            categories = categories,
+            selectedCategory = selectedCategory,
+            onCategorySelected = { id ->
+                selectedCategory = id
+                viewModel.setFiltroCategoria(id)
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // LazyColumn ocupando solo la mitad de la pantalla
+        LazyColumn(
+            //modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(historial) { transaccion ->
+                HistorialItem(transaccion, viewModel)
             }
         }
     }
@@ -58,7 +86,7 @@ fun HistorialItem(
     transaccion: TransaccionEntity,
     viewModel: HistorialViewModel = hiltViewModel()
 ) {
-    var filtros by remember { mutableStateOf(FiltrosUI()) }
+    //var filtros by remember { mutableStateOf(FiltrosUI()) }
     var expanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) } // Estado para el diálogo
 
@@ -174,6 +202,84 @@ fun HistorialItem(
 
     }
 }
+
+@Composable
+fun FiltrosDialog(
+    categories: List<Pair<Int, String>>,
+    selectedCategory: Int,
+    onCategorySelected: (Int) -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+
+    // Botón que abre el AlertDialog
+    TextButton(onClick = { showDialog = true }) {
+        Text("Filtro")
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Ajusta los filtros") },
+            text = {
+                Column {
+
+                    Row (
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Text(
+                            text = "Categorías",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                        )
+                        // Dropdown dentro del AlertDialog
+                        Box {
+                            TextButton(
+                                onClick = { expanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = categories.firstOrNull { it.first == selectedCategory }?.second
+                                        ?: "Todas"
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                categories.forEach { (id, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            onCategorySelected(id)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
 
 
 fun getCategoryIconById(idCategoria: Int): ImageVector {
