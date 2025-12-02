@@ -69,6 +69,15 @@ class HistorialViewModel @Inject constructor(
         _filtros.value = _filtros.value.copy(montoMax = monto)
     }
 
+    fun setFechaMin(fecha: String) {
+        _filtros.value = _filtros.value.copy(fechaInicio = fecha)
+    }
+
+    fun setFechaMax(fecha: String) {
+        _filtros.value = _filtros.value.copy(fechaFinal = fecha)
+    }
+
+
     fun onDelete(transaccion: TransaccionEntity) {
         viewModelScope.launch {
             transaccionRepository.deleteTransaccion(transaccion)

@@ -71,7 +71,13 @@ fun HistorialScreen(
                 viewModel.setMontoMin(montoMin)
             },
             onMontoMax = { montoMax ->
-                viewModel.setMontoMin(montoMax)
+                viewModel.setMontoMax(montoMax)
+            },
+            onFechaMin = { fechaMin ->
+                viewModel.setFechaMin(fechaMin)
+            },
+            onFechaMax = { fechaMax ->
+                viewModel.setFechaMax(fechaMax)
             }
 
         )
@@ -233,12 +239,16 @@ fun FiltrosDialog(
     selectedCategory: Int,
     onCategorySelected: (Int) -> Unit,
     onMontoMin: (String) -> Unit,
-    onMontoMax: (String) -> Unit
+    onMontoMax: (String) -> Unit,
+    onFechaMin: (String) -> Unit,
+    onFechaMax: (String) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var montoMin by remember { mutableStateOf("") }
     var montoMax by remember { mutableStateOf("") }
+    var fechaMin by remember { mutableStateOf("") }
+    var fechaMax by remember { mutableStateOf("") }
 
     // Botón que abre el AlertDialog
     TextButton(onClick = { showDialog = true }) {
