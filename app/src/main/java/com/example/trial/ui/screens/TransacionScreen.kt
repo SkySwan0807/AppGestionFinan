@@ -71,7 +71,8 @@ fun ExpenseScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = if (isIngreso) "Ingreso " else "Gasto ",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isIngreso) GreenSuccess else RedWarning
             )
             Switch(
                 checked = isIngreso,

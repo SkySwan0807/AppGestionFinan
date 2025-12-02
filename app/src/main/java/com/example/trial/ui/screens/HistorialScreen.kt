@@ -3,6 +3,7 @@ package com.example.trial.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Category
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -64,20 +66,42 @@ fun HistorialScreen(
             onCategorySelected = { id ->
                 selectedCategory = id
                 viewModel.setFiltroCategoria(id)
+            },
+            onMontoMin = { montoMin ->
+                viewModel.setMontoMin(montoMin)
+            },
+            onMontoMax = { montoMax ->
+                viewModel.setMontoMin(montoMax)
             }
+
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
         // LazyColumn ocupando solo la mitad de la pantalla
-        LazyColumn(
-            //modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(historial) { transaccion ->
-                HistorialItem(transaccion, viewModel)
+        if (historial.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.5f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No hay transacciones",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        } else {
+            LazyColumn(
+                //modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(historial) { transaccion ->
+                    HistorialItem(transaccion, viewModel)
+                }
             }
         }
+
     }
 }
 
@@ -207,10 +231,14 @@ fun HistorialItem(
 fun FiltrosDialog(
     categories: List<Pair<Int, String>>,
     selectedCategory: Int,
-    onCategorySelected: (Int) -> Unit
+    onCategorySelected: (Int) -> Unit,
+    onMontoMin: (String) -> Unit,
+    onMontoMax: (String) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    var montoMin by remember { mutableStateOf("") }
+    var montoMax by remember { mutableStateOf("") }
 
     // Botón que abre el AlertDialog
     TextButton(onClick = { showDialog = true }) {
@@ -223,20 +251,19 @@ fun FiltrosDialog(
             title = { Text("Ajusta los filtros") },
             text = {
                 Column {
-
-                    Row (
+                    // Dropdown de categorías
+                    Row(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Text(
                             text = "Categorías",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold
                             ),
+                            modifier = Modifier.padding(end = 8.dp)
                         )
-                        // Dropdown dentro del AlertDialog
-                        Box {
+                        Box(modifier = Modifier.weight(1f)) {
                             TextButton(
                                 onClick = { expanded = true },
                                 modifier = Modifier.fillMaxWidth()
@@ -264,6 +291,54 @@ fun FiltrosDialog(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Monto mínimo
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Monto minimo",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        NumericTextBox(
+                            value = montoMin,
+                            onValueChange = {
+                                montoMin = it
+                                onMontoMin(it)
+                            },
+                            label = "Monto mínimo"
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Monto maximo
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Monto maximo",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        NumericTextBox(
+                            value = montoMax,
+                            onValueChange = {
+                                montoMax = it
+                                onMontoMax(it)
+                            },
+                            label = "Monto maximo"
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -272,14 +347,40 @@ fun FiltrosDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Cancelar")
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        montoMin = ""
+                        montoMax = ""
+                        onCategorySelected(0)
+                    }
+                ) {
+                    Text("Eliminar Filtros")
                 }
             }
         )
     }
 }
 
+@Composable
+fun NumericTextBox(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { newValue ->
+            // Opcional: filtrar solo dígitos
+            if (newValue.all { it.isDigit() }) {
+                onValueChange(newValue)
+            }
+        },
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+    )
+}
 
 
 fun getCategoryIconById(idCategoria: Int): ImageVector {

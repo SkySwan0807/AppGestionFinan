@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 
 data class FiltrosUI(
@@ -19,7 +20,8 @@ data class FiltrosUI(
     val selectedTipo: String = "",
     val montoMin: String = "",
     val montoMax: String = "",
-    val fechaFiltro: String = ""
+    val fechaInicio: String = "",
+    val fechaFinal: String = ""
 )
 
 @HiltViewModel
@@ -40,13 +42,31 @@ class HistorialViewModel @Inject constructor(
 
     val historialFiltrado: StateFlow<List<TransaccionEntity>> =
         combine(_historial, _filtros) { lista, filtros ->
+            val montoMin = filtros.montoMin.toDoubleOrNull()
+            val montoMax = filtros.montoMax.toDoubleOrNull()
+
             lista.filter { trans ->
-                filtros.selectedCategory == 0 || trans.idCategoria == filtros.selectedCategory
+                val montoAbs = abs(trans.monto)
+
+                val cumpleCategoria = filtros.selectedCategory == 0 || trans.idCategoria == filtros.selectedCategory
+                val cumpleMin = montoMin?.let { montoAbs >= it } ?: true
+                val cumpleMax = montoMax?.let { montoAbs <= it } ?: true
+
+                cumpleCategoria && cumpleMin && cumpleMax
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+
     fun setFiltroCategoria(categoriaId: Int) {
         _filtros.value = _filtros.value.copy(selectedCategory = categoriaId)
+    }
+
+    fun setMontoMin(monto: String) {
+        _filtros.value = _filtros.value.copy(montoMin = monto)
+    }
+
+    fun setMontoMax(monto: String) {
+        _filtros.value = _filtros.value.copy(montoMax = monto)
     }
 
     fun onDelete(transaccion: TransaccionEntity) {
