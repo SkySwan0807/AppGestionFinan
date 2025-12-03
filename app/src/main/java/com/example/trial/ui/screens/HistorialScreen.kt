@@ -1,6 +1,8 @@
 package com.example.trial.ui.screens
 
+import android.widget.DatePicker
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 @Composable
@@ -45,69 +50,79 @@ fun HistorialScreen(
         6 to "Ingresos"
     )
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    // 🔥 Toda la pantalla scrolleable
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
 
-        Text(
-            text = "Historial de Transacciones",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold
+        item {
+            Text(
+                text = "Historial de Transacciones",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        item {
+            var selectedCategory by remember { mutableStateOf(0) }
 
-        var selectedCategory by remember { mutableStateOf(0) }
+            FiltrosDialog(
+                categories = categories,
+                selectedCategory = selectedCategory,
+                onCategorySelected = { id ->
+                    selectedCategory = id
+                    viewModel.setFiltroCategoria(id)
+                },
+                onMontoMin = { viewModel.setMontoMin(it) },
+                onMontoMax = { viewModel.setMontoMax(it) },
+                onFechaMin = { viewModel.setFechaMin(it) },
+                onFechaMax = { viewModel.setFechaMax(it) }
+            )
+        }
 
-        FiltrosDialog(
-            categories = categories,
-            selectedCategory = selectedCategory,
-            onCategorySelected = { id ->
-                selectedCategory = id
-                viewModel.setFiltroCategoria(id)
-            },
-            onMontoMin = { montoMin ->
-                viewModel.setMontoMin(montoMin)
-            },
-            onMontoMax = { montoMax ->
-                viewModel.setMontoMax(montoMax)
-            },
-            onFechaMin = { fechaMin ->
-                viewModel.setFechaMin(fechaMin)
-            },
-            onFechaMax = { fechaMax ->
-                viewModel.setFechaMax(fechaMax)
-            }
 
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // LazyColumn ocupando solo la mitad de la pantalla
-        if (historial.isEmpty()) {
+        item {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.5f),
-                contentAlignment = Alignment.Center
+                    .height(300.dp)
             ) {
-                Text(
-                    text = "No hay transacciones",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-        } else {
-            LazyColumn(
-                //modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(historial) { transaccion ->
-                    HistorialItem(transaccion, viewModel)
+                if (historial.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No hay transacciones",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(historial) { transaccion ->
+                            HistorialItem(transaccion, viewModel)
+                        }
+                    }
                 }
             }
         }
 
+        item {
+            Divider()
+        }
+
     }
 }
+
 
 @Composable
 fun HistorialItem(
@@ -231,6 +246,7 @@ fun HistorialItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FiltrosDialog(
     categories: List<Pair<Int, String>>,
@@ -238,54 +254,87 @@ fun FiltrosDialog(
     onCategorySelected: (Int) -> Unit,
     onMontoMin: (String) -> Unit,
     onMontoMax: (String) -> Unit,
-    onFechaMin: (String) -> Unit,
-    onFechaMax: (String) -> Unit
+    onFechaMin: (Long?) -> Unit,
+    onFechaMax: (Long?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+
     var montoMin by remember { mutableStateOf("") }
     var montoMax by remember { mutableStateOf("") }
-    var fechaMin by remember { mutableStateOf("") }
-    var fechaMax by remember { mutableStateOf("") }
 
-    // Botón que abre el AlertDialog
+    var fechaMin by remember { mutableStateOf<Long?>(null) }
+    var fechaMax by remember { mutableStateOf<Long?>(null) }
+
+
+    // Control de DatePicker
+    var showDatePickerMin by remember { mutableStateOf(false) }
+    var showDatePickerMax by remember { mutableStateOf(false) }
+
+    // Botón para abrir filtros
     TextButton(onClick = { showDialog = true }) {
         Text("Filtro")
     }
 
+    // ----------------------------
+    // DATE PICKER FECHA INICIO
+    // ----------------------------
+    if (showDatePickerMin) {
+        DatePickerDialogCustom(
+            title = "Selecciona fecha de inicio",
+            onConfirm = { millis ->
+                fechaMin = millis
+                onFechaMin(millis)
+                showDatePickerMin = false
+            },
+            onDismiss = { showDatePickerMin = false }
+        )
+    }
+
+    // ----------------------------
+    // DATE PICKER FECHA FIN
+    // ----------------------------
+    if (showDatePickerMax) {
+        DatePickerDialogCustom(
+            title = "Selecciona fecha final",
+            onConfirm = { millis ->
+                fechaMax = millis
+                onFechaMax(millis)
+                showDatePickerMax = false
+            },
+            onDismiss = { showDatePickerMax = false }
+        )
+    }
+
+    // ----------------------------
+    // ALERTDIALOG PRINCIPAL
+    // ----------------------------
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text("Ajusta los filtros") },
             text = {
                 Column {
-                    // Dropdown de categorías
+
+                    // CATEGORÍAS
                     Row(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Categorías",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Box(modifier = Modifier.weight(1f)) {
+                        Text("Categorías", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(8.dp))
+
+                        Box(Modifier.weight(1f)) {
                             TextButton(
                                 onClick = { expanded = true },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = categories.firstOrNull { it.first == selectedCategory }?.second
-                                        ?: "Todas"
-                                )
+                                Text(categories.firstOrNull { it.first == selectedCategory }?.second ?: "Todas")
                             }
 
                             DropdownMenu(
                                 expanded = expanded,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.fillMaxWidth()
+                                onDismissRequest = { expanded = false }
                             ) {
                                 categories.forEach { (id, label) ->
                                     DropdownMenuItem(
@@ -300,52 +349,52 @@ fun FiltrosDialog(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    // Monto mínimo
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Monto minimo",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        NumericTextBox(
-                            value = montoMin,
-                            onValueChange = {
-                                montoMin = it
-                                onMontoMin(it)
-                            },
-                            label = "Monto mínimo"
-                        )
+                    // MONTO MÍNIMO
+                    NumericTextBox(
+                        value = montoMin,
+                        onValueChange = {
+                            montoMin = it
+                            onMontoMin(it)
+                        },
+                        label = "Monto mínimo"
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // MONTO MÁXIMO
+                    NumericTextBox(
+                        value = montoMax,
+                        onValueChange = {
+                            montoMax = it
+                            onMontoMax(it)
+                        },
+                        label = "Monto máximo"
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // FECHA MÍNIMA
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Fecha inicio", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(8.dp))
+
+                        TextButton(onClick = { showDatePickerMin = true }) {
+                            Text(fechaMin?.let { formatoFecha(it) } ?: "Seleccionar")
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    // Monto maximo
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Monto maximo",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        NumericTextBox(
-                            value = montoMax,
-                            onValueChange = {
-                                montoMax = it
-                                onMontoMax(it)
-                            },
-                            label = "Monto maximo"
-                        )
+                    // FECHA MÁXIMA
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Fecha final", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(8.dp))
+
+                        TextButton(onClick = { showDatePickerMax = true }) {
+                            Text(fechaMax?.let { formatoFecha(it) } ?: "Seleccionar")
+                        }
                     }
                 }
             },
@@ -355,16 +404,21 @@ fun FiltrosDialog(
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        montoMin = ""
-                        montoMax = ""
-                        onMontoMax("")
-                        onMontoMin("")
-                        onCategorySelected(0)
-                        showDialog = false
-                    }
-                ) {
+                TextButton(onClick = {
+                    montoMin = ""
+                    montoMax = ""
+                    fechaMin = null
+                    fechaMax = null
+
+                    onMontoMin("")
+                    onMontoMax("")
+                    onFechaMin(null)
+                    onFechaMax(null)
+
+                    onCategorySelected(0)
+
+                    showDialog = false
+                }) {
                     Text("Eliminar Filtros")
                 }
             }
@@ -381,10 +435,7 @@ fun NumericTextBox(
     OutlinedTextField(
         value = value,
         onValueChange = { newValue ->
-            // Opcional: filtrar solo dígitos
-            if (newValue.all { it.isDigit() }) {
-                onValueChange(newValue)
-            }
+            onValueChange(newValue)
         },
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth(),
@@ -392,6 +443,41 @@ fun NumericTextBox(
     )
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerDialogCustom(
+    title: String,
+    onConfirm: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val state = rememberDatePickerState()
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(title) },
+        text = {
+            DatePicker(state = state)
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    state.selectedDateMillis?.let { onConfirm(it) }
+                }
+            ) { Text("Aceptar") }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+fun formatoFecha(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd MMM yyyy", Locale("es", "BO"))
+    return sdf.format(Date(timestamp))
+}
 
 fun getCategoryIconById(idCategoria: Int): ImageVector {
     return when (idCategoria) {

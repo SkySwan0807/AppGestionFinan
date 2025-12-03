@@ -37,7 +37,7 @@ class TransaccionViewModel @Inject constructor(
 
     private val ingreso = MutableStateFlow(
         CategoriaEntity(
-            0,
+            6,
             "Ingreso",
             ""))
 

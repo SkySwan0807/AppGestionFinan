@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.Date
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -20,8 +22,8 @@ data class FiltrosUI(
     val selectedTipo: String = "",
     val montoMin: String = "",
     val montoMax: String = "",
-    val fechaInicio: String = "",
-    val fechaFinal: String = ""
+    val fechaInicio: Long? = null,
+    val fechaFinal: Long? = null
 )
 
 @HiltViewModel
@@ -52,7 +54,10 @@ class HistorialViewModel @Inject constructor(
                 val cumpleMin = montoMin?.let { montoAbs >= it } ?: true
                 val cumpleMax = montoMax?.let { montoAbs <= it } ?: true
 
-                cumpleCategoria && cumpleMin && cumpleMax
+                val cumpleFechaInicio = filtros.fechaInicio?.let { trans.fecha >= it } ?: true
+                val cumpleFechaFinal  = filtros.fechaFinal?.let { trans.fecha <= it } ?: true
+
+                cumpleCategoria && cumpleMin && cumpleMax && cumpleFechaInicio && cumpleFechaFinal
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -69,12 +74,12 @@ class HistorialViewModel @Inject constructor(
         _filtros.value = _filtros.value.copy(montoMax = monto)
     }
 
-    fun setFechaMin(fecha: String) {
-        _filtros.value = _filtros.value.copy(fechaInicio = fecha)
+    fun setFechaMin(fechaMillis: Long?) {
+        _filtros.value = _filtros.value.copy(fechaInicio = fechaMillis)
     }
 
-    fun setFechaMax(fecha: String) {
-        _filtros.value = _filtros.value.copy(fechaFinal = fecha)
+    fun setFechaMax(fechaMillis: Long?) {
+        _filtros.value = _filtros.value.copy(fechaFinal = fechaMillis)
     }
 
 
