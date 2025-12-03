@@ -56,7 +56,7 @@ fun GraficosScreen(
                 Text(
                     text = "Gasto por Categoría",
                     style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        fontWeight = FontWeight.Bold
                     )
                 )
 
@@ -71,7 +71,17 @@ fun GraficosScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+            }
 
+            item {
+                Text(
+                    text = "Variacion de Ingresos Por fecha",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             item {

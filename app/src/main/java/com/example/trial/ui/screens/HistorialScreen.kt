@@ -114,7 +114,9 @@ fun HistorialItem(
 ) {
     //var filtros by remember { mutableStateOf(FiltrosUI()) }
     var expanded by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) } // Estado para el diálogo
+    var showDeleteDialog by remember { mutableStateOf(false) } // Estado para la eliminacion
+    var showModificarDialog by remember { mutableStateOf(false) } // Estado para la modificacion
+
 
     Card(
         modifier = Modifier
@@ -178,7 +180,8 @@ fun HistorialItem(
                         text = { Text("Modificar") },
                         onClick = {
                             expanded = false
-                            viewModel.onEdit(transaccion)
+                            showModificarDialog = true // Muestra el diálogo
+
                         }
                     )
                     DropdownMenuItem(
@@ -192,6 +195,8 @@ fun HistorialItem(
             }
         }
     }
+
+    EditarTransaccionDialog(transaccion, showModificarDialog, { showModificarDialog = false }, viewModel)
 
     // --------------------
     // Diálogo de confirmación
@@ -227,6 +232,68 @@ fun HistorialItem(
         )
 
     }
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditarTransaccionDialog(
+    transaccion: TransaccionEntity,
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    viewModel: HistorialViewModel
+) {
+    if (!showDialog) return
+
+    var monto by remember { mutableStateOf(transaccion.monto.toString()) }
+    var descripcion by remember { mutableStateOf(transaccion.descripcion ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Modificar transacción") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = monto,
+                    onValueChange = { monto = it },
+                    label = { Text("Monto") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    singleLine = false,
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val nuevoMonto = monto.toDoubleOrNull()
+                    if (nuevoMonto != null) {
+                        viewModel.onEdit(
+                            transaccion.copy(
+                                monto = nuevoMonto,
+                                descripcion = descripcion
+                            )
+                        )
+                        onDismiss()
+                    }
+                }
+            ) {
+                Text("Guardar cambios")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
