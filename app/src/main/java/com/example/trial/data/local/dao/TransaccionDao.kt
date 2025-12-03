@@ -2,6 +2,7 @@ package com.example.trial.data.local.dao
 
 import androidx.room.*
 import com.example.trial.data.local.entities.TransaccionEntity
+import com.example.trial.ui.viewmodels.CategorySumFecha
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -50,5 +51,22 @@ interface TransaccionDao {
                 "WHERE fecha BETWEEN :start AND :end " +
                 "GROUP BY c.nombre"
     )
-    fun getSumByCategory(start: Long, end: Long): Flow<List<CategorySum>>
+    fun getSumByCategoryFecha(start: Long, end: Long): Flow<List<CategorySum>>
+
+    @Query(
+        "SELECT c.idCategoria, c.nombre AS category, ABS(SUM(t.monto)) as total " +
+            "FROM transacciones AS t " +
+            "INNER JOIN categorias AS c ON t.idCategoria = c.idCategoria " +
+            "GROUP BY c.nombre"
+    )
+    fun getSumByCategory(): Flow<List<CategorySum>>
+
+    @Query("SELECT idCategoria, SUM(monto) as total, fecha " +
+            "FROM transacciones " +
+            "WHERE idCategoria = :idCategoria " +
+            "GROUP BY fecha " +
+            "ORDER BY fecha DESC " +
+            "LIMIT 5")
+    fun getTotalPorCategoriaPorDia(idCategoria: Int): Flow<List<CategorySumFecha>>
 }
+

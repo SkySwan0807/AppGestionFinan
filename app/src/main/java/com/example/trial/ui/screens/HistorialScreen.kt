@@ -1,6 +1,5 @@
 package com.example.trial.ui.screens
 
-import android.widget.DatePicker
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,74 +49,58 @@ fun HistorialScreen(
         6 to "Ingresos"
     )
 
-    // 🔥 Toda la pantalla scrolleable
-    LazyColumn(
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
-        item {
-            Text(
-                text = "Historial de Transacciones",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold
-                )
+
+        Text(
+            text = "Historial de Transacciones",
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold
             )
-        }
+        )
 
-        item {
-            var selectedCategory by remember { mutableStateOf(0) }
+        var selectedCategory by remember { mutableStateOf(0) }
 
-            FiltrosDialog(
-                categories = categories,
-                selectedCategory = selectedCategory,
-                onCategorySelected = { id ->
-                    selectedCategory = id
-                    viewModel.setFiltroCategoria(id)
-                },
-                onMontoMin = { viewModel.setMontoMin(it) },
-                onMontoMax = { viewModel.setMontoMax(it) },
-                onFechaMin = { viewModel.setFechaMin(it) },
-                onFechaMax = { viewModel.setFechaMax(it) }
-            )
-        }
+        FiltrosDialog(
+            categories = categories,
+            selectedCategory = selectedCategory,
+            onCategorySelected = { id ->
+                selectedCategory = id
+                viewModel.setFiltroCategoria(id)
+            },
+            onMontoMin = { viewModel.setMontoMin(it) },
+            onMontoMax = { viewModel.setMontoMax(it) },
+            onFechaMin = { viewModel.setFechaMin(it) },
+            onFechaMax = { viewModel.setFechaMax(it) }
+        )
 
-
-        item {
+        if (historial.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                if (historial.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No hay transacciones",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(historial) { transaccion ->
-                            HistorialItem(transaccion, viewModel)
-                        }
-                    }
+                Text(
+                    text = "No hay transacciones",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(historial) { transaccion ->
+                    HistorialItem(transaccion, viewModel)
                 }
             }
-        }
-
-        item {
-            Divider()
         }
 
     }

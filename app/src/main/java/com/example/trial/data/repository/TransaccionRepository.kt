@@ -3,6 +3,7 @@ package com.example.trial.data.repository
 import com.example.trial.data.local.dao.CategorySum
 import com.example.trial.data.local.dao.TransaccionDao
 import com.example.trial.data.local.entities.TransaccionEntity
+import com.example.trial.ui.viewmodels.CategorySumFecha
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -21,8 +22,16 @@ class TransaccionRepository @Inject constructor(
         return transaccionDao.getTotalPorCategoriaYPeriodo(idCategoria, start, end) ?: 0.0
     }
 
-    fun getSumByCategory(startTs: Long, endTs: Long): Flow<List<CategorySum>> =
-        transaccionDao.getSumByCategory(startTs, endTs)
+    fun getSumByCategoryFecha(startTs: Long, endTs: Long): Flow<List<CategorySum>> =
+        transaccionDao.getSumByCategoryFecha(startTs, endTs)
+
+    fun getSumByCategory(): Flow<List<CategorySum>> =
+        transaccionDao.getSumByCategory()
+
+    fun getTotalPorCategoria(idCategoria: Int): Flow<List<CategorySumFecha>> =
+        transaccionDao.getTotalPorCategoriaPorDia(idCategoria)
+
+
 
     fun getTransfersBetween(startTs: Long, endTs: Long): Flow<List<TransaccionEntity>> =
         transaccionDao.getTransfersBetween(startTs, endTs)
