@@ -7,6 +7,7 @@ import com.example.trial.data.repository.MetaAhorroRepository
 import com.example.trial.data.repository.TransaccionRepository
 import com.example.trial.data.repository.CategoriaRepository
 import com.example.trial.data.local.entities.CategoriaEntity
+import com.example.trial.notifications.GoalNotificationManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,6 +21,14 @@ data class MetaAhorroWithProgress(
     val remainingDays: Int
 )
 
+enum class MetaFilter {
+    TODAS, ACTIVAS, COMPLETADAS, CANCELADAS, NO_CUMPLIDAS, VIGENTES
+}
+
+enum class MetaSortField {
+    FECHA_OBJETIVO, PROGRESO, MONTO
+}
+
 data class MetaAhorroUiState(
     val metas: List<MetaAhorroWithProgress> = emptyList(),
     val categories: List<CategoriaEntity> = emptyList(),
@@ -30,14 +39,21 @@ data class MetaAhorroUiState(
     val description: String = "",
     val isLoading: Boolean = false,
     val showSuccess: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val editingMetaId: Int? = null,
+    val isEditMode: Boolean = false,
+    val selectedFilter: MetaFilter = MetaFilter.ACTIVAS,
+    val sortBy: MetaSortField = MetaSortField.FECHA_OBJETIVO,
+    val showDeleteConfirmation: Boolean = false,
+    val metaToDelete: MetaAhorroEntity? = null
 )
 
 @HiltViewModel
 class MetaAhorroViewModel @Inject constructor(
     private val metaRepository: MetaAhorroRepository,
     private val transaccionRepository: TransaccionRepository,
-    private val categoriaRepository: CategoriaRepository
+    private val categoriaRepository: CategoriaRepository,
+    private val notificationManager: GoalNotificationManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MetaAhorroUiState())
@@ -68,11 +84,24 @@ class MetaAhorroViewModel @Inject constructor(
     }
 
     // -------------------------------------------------------------
-    // CARGA DE METAS CON PROGRESO
+    // CARGA DE METAS CON PROGRESO (CON FILTROS)
     // -------------------------------------------------------------
     private fun loadMetas() {
         viewModelScope.launch {
-            metaRepository.getActiveMetas()
+            val filter = _uiState.value.selectedFilter
+            val sortField = _uiState.value.sortBy
+            
+            // Seleccionar flujo según filtro
+            val metasFlow = when (filter) {
+                MetaFilter.ACTIVAS -> metaRepository.getActiveMetas()
+                MetaFilter.COMPLETADAS -> metaRepository.getByEstado(2)
+                MetaFilter.CANCELADAS -> metaRepository.getByEstado(3)
+                MetaFilter.NO_CUMPLIDAS -> metaRepository.getByEstado(4)
+                MetaFilter.VIGENTES -> metaRepository.getMetasVigentes(System.currentTimeMillis())
+                MetaFilter.TODAS -> metaRepository.getAll()
+            }
+            
+            metasFlow
                 .flatMapLatest { metas ->
                     combine(
                         metas.map { meta ->
@@ -96,7 +125,23 @@ class MetaAhorroViewModel @Inject constructor(
                         }
                     ) { it.toList() }
                 }
+                .map { metasWithProgress ->
+                    // Aplicar ordenamiento
+                    when (sortField) {
+                        MetaSortField.FECHA_OBJETIVO -> 
+                            metasWithProgress.sortedBy { it.meta.fechaObjetivo }
+                        MetaSortField.PROGRESO -> 
+                            metasWithProgress.sortedByDescending { it.progress }
+                        MetaSortField.MONTO -> 
+                            metasWithProgress.sortedByDescending { it.meta.monto }
+                    }
+                }
                 .collect { metasWithProgress ->
+                    // Enviar notificaciones basadas en el progreso
+                    metasWithProgress.forEach { metaWithProgress ->
+                        notificationManager.checkAndSendNotifications(metaWithProgress)
+                    }
+                    
                     _uiState.update {
                         it.copy(metas = metasWithProgress, isLoading = false)
                     }
@@ -123,67 +168,6 @@ class MetaAhorroViewModel @Inject constructor(
         _uiState.update { it.copy(description = description) }
     }
 
-    // -------------------------------------------------------------
-    // CREAR NUEVA META
-    // -------------------------------------------------------------
-    fun createMeta() {
-        val current = _uiState.value
-
-        val amount = current.targetAmount.toDoubleOrNull()
-        val months = current.months.toIntOrNull()
-
-        if (amount == null || amount <= 0) {
-            _uiState.update { it.copy(errorMessage = "Monto inválido") }
-            return
-        }
-
-        if (months == null || months <= 0) {
-            _uiState.update { it.copy(errorMessage = "Plazo inválido") }
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
-            try {
-                val calendar = Calendar.getInstance()
-                val start = calendar.timeInMillis
-                calendar.add(Calendar.MONTH, months)
-                val end = calendar.timeInMillis
-
-                val meta = MetaAhorroEntity(
-                    idCategoria = current.categoryId,
-                    monto = amount,
-                    montoActual = 0.0,
-                    fechaInicio = start,
-                    fechaObjetivo = end,
-                    descripcion = current.description.takeIf { it.isNotBlank() } ?: "",
-                    idEstado = 0,
-                    nombre = current.categoryName
-                )
-
-                metaRepository.insert(meta)
-
-                _uiState.update {
-                    it.copy(
-                        showSuccess = true,
-                        categoryId = current.categoryId,
-                        categoryName = current.categoryName
-                    )
-                }
-
-                loadMetas()
-
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Error al crear meta: ${e.message}"
-                    )
-                }
-            }
-        }
-    }
 
     // -------------------------------------------------------------
     // ELIMINAR META
@@ -192,6 +176,7 @@ class MetaAhorroViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 metaRepository.delete(meta)
+                notificationManager.clearNotificationHistory(meta.idMeta)
                 loadMetas()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Error al eliminar: ${e.message}") }
@@ -214,5 +199,215 @@ class MetaAhorroViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    // -------------------------------------------------------------
+    // EDITAR META
+    // -------------------------------------------------------------
+    fun startEditing(meta: MetaAhorroEntity) {
+        val monthsDiff = calculateMonthsDifference(
+            meta.fechaInicio,
+            meta.fechaObjetivo
+        )
+
+        _uiState.update {
+            it.copy(
+                isEditMode = true,
+                editingMetaId = meta.idMeta,
+                categoryId = meta.idCategoria,
+                targetAmount = meta.monto.toString(),
+                months = monthsDiff.toString(),
+                description = meta.descripcion ?: ""
+            )
+        }
+    }
+
+    fun cancelEditing() {
+        _uiState.update {
+            it.copy(
+                isEditMode = false,
+                editingMetaId = null,
+                categoryId = 0,
+                targetAmount = "",
+                months = "1",
+                description = ""
+            )
+        }
+    }
+
+    private fun calculateMonthsDifference(start: Long, end: Long): Int {
+        val diff = end - start
+        return (diff / (1000L * 60 * 60 * 24 * 30)).toInt().coerceAtLeast(1)
+    }
+
+    // -------------------------------------------------------------
+    // ACTUALIZAR META (CREAR O EDITAR)
+    // -------------------------------------------------------------
+    fun saveMeta() {
+        val current = _uiState.value
+
+        val amount = current.targetAmount.toDoubleOrNull()
+        val months = current.months.toIntOrNull()
+
+        if (amount == null || amount <= 0) {
+            _uiState.update { it.copy(errorMessage = "Monto debe ser mayor a 0") }
+            return
+        }
+
+        if (months == null || months <= 0) {
+            _uiState.update { it.copy(errorMessage = "Plazo debe ser mayor a 0") }
+            return
+        }
+
+        if (current.categoryId == 0) {
+            _uiState.update { it.copy(errorMessage = "Debe seleccionar una categoría") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            try {
+                if (current.isEditMode && current.editingMetaId != null) {
+                    // MODO EDICIÓN
+                    val metaExistente = metaRepository.getById(current.editingMetaId)
+                    metaExistente?.let { meta ->
+                        val calendar = Calendar.getInstance()
+                        calendar.timeInMillis = meta.fechaInicio
+                        calendar.add(Calendar.MONTH, months)
+                        val nuevaFechaObjetivo = calendar.timeInMillis
+
+                        val metaActualizada = meta.copy(
+                            idCategoria = current.categoryId,
+                            monto = amount,
+                            descripcion = current.description.takeIf { it.isNotBlank() },
+                            fechaObjetivo = nuevaFechaObjetivo
+                        )
+                        metaRepository.update(metaActualizada)
+                    }
+                } else {
+                    // MODO CREACIÓN
+                    val calendar = Calendar.getInstance()
+                    val start = calendar.timeInMillis
+                    calendar.add(Calendar.MONTH, months)
+                    val end = calendar.timeInMillis
+
+                    val categoriaNombre = current.categories
+                        .firstOrNull { it.idCategoria == current.categoryId }?.nombre ?: "Meta"
+
+                    val meta = MetaAhorroEntity(
+                        idCategoria = current.categoryId,
+                        monto = amount,
+                        montoActual = 0.0,
+                        fechaInicio = start,
+                        fechaObjetivo = end,
+                        descripcion = current.description.takeIf { it.isNotBlank() },
+                        idEstado = 1, // Activo
+                        nombre = categoriaNombre
+                    )
+
+                    metaRepository.insert(meta)
+                }
+
+                _uiState.update {
+                    it.copy(
+                        showSuccess = true,
+                        isEditMode = false,
+                        editingMetaId = null,
+                        isLoading = false,
+                        categoryId = 0,
+                        targetAmount = "",
+                        months = "1",
+                        description = ""
+                    )
+                }
+
+                loadMetas()
+
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Error al guardar: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // CAMBIAR ESTADO DE META
+    // -------------------------------------------------------------
+    fun markAsCompleted(meta: MetaAhorroEntity) {
+        viewModelScope.launch {
+            try {
+                metaRepository.update(meta.copy(idEstado = 2)) // Completado
+                loadMetas()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Error: ${e.message}") }
+            }
+        }
+    }
+
+    fun markAsCancelled(meta: MetaAhorroEntity) {
+        viewModelScope.launch {
+            try {
+                metaRepository.update(meta.copy(idEstado = 3)) // Cancelado
+                loadMetas()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Error: ${e.message}") }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // CONFIRMACIÓN DE ELIMINACIÓN
+    // -------------------------------------------------------------
+    fun showDeleteConfirmation(meta: MetaAhorroEntity) {
+        _uiState.update {
+            it.copy(
+                showDeleteConfirmation = true,
+                metaToDelete = meta
+            )
+        }
+    }
+
+    fun hideDeleteConfirmation() {
+        _uiState.update {
+            it.copy(
+                showDeleteConfirmation = false,
+                metaToDelete = null
+            )
+        }
+    }
+
+    fun confirmDelete() {
+        val meta = _uiState.value.metaToDelete
+        if (meta != null) {
+            deleteMeta(meta)
+            hideDeleteConfirmation()
+        }
+    }
+
+    // -------------------------------------------------------------
+    // FILTROS Y ORDENAMIENTO
+    // -------------------------------------------------------------
+    fun setFilter(filter: MetaFilter) {
+        _uiState.update { it.copy(selectedFilter = filter) }
+        loadMetas()
+    }
+
+    fun setSortField(sortField: MetaSortField) {
+        _uiState.update { it.copy(sortBy = sortField) }
+        loadMetas()
+    }
+
+    // -------------------------------------------------------------
+    // LIMPIEZA AL DESTRUIR EL VIEWMODEL
+    // -------------------------------------------------------------
+    override fun onCleared() {
+        super.onCleared()
+        // Limpiar historial de notificaciones cuando se destruye el ViewModel
+        notificationManager.clearAllNotificationHistory()
     }
 }
