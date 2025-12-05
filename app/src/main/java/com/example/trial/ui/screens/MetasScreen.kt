@@ -1,15 +1,12 @@
 package com.example.trial.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,15 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.trial.ui.theme.*
 import com.example.trial.ui.viewmodels.MetaAhorroViewModel
 import com.example.trial.ui.viewmodels.MetaAhorroWithProgress
-import com.example.trial.ui.viewmodels.MetaFilter
-import com.example.trial.ui.viewmodels.MetaSortField
 
 @Composable
 fun GoalScreen(
@@ -34,9 +27,6 @@ fun GoalScreen(
     val uiState by viewModel.uiState.collectAsState()
     val categorias by viewModel.categorias.collectAsState(emptyList())
     var showCreateForm by remember { mutableStateOf(false) }
-    
-    // Mostrar formulario si estamos en modo edición o si el usuario lo activó
-    val displayForm = uiState.isEditMode || showCreateForm
 
     LazyColumn(
         modifier = Modifier
@@ -58,42 +48,16 @@ fun GoalScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Button(
-                    onClick = { 
-                        if (uiState.isEditMode) {
-                            viewModel.cancelEditing()
-                        } else {
-                            showCreateForm = !showCreateForm
-                        }
-                    },
+                    onClick = { showCreateForm = !showCreateForm },
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        if (uiState.isEditMode) "Cancelar Edición" 
-                        else if (displayForm) "Cancelar" 
-                        else "+ Nueva Meta"
-                    )
+                    Text(if (showCreateForm) "Cancelar" else "+ Nueva Meta")
                 }
             }
         }
 
-        // FILTROS
-        item {
-            FilterChips(
-                selectedFilter = uiState.selectedFilter,
-                onFilterChange = { viewModel.setFilter(it) }
-            )
-        }
-
-        // ORDENAMIENTO
-        item {
-            SortSelector(
-                selectedSort = uiState.sortBy,
-                onSortChange = { viewModel.setSortField(it) }
-            )
-        }
-
         // FORMULARIO
-        if (displayForm) {
+        if (showCreateForm) {
             item {
                 CreateGoalForm(
                     viewModel = viewModel,
@@ -140,22 +104,10 @@ fun GoalScreen(
                     goalWithProgress = metaProgress,
                     categoriaNombre = categorias.firstOrNull { it.idCategoria == metaProgress.meta.idCategoria }?.nombre
                         ?: "Categoría",
-                    onDelete = { viewModel.showDeleteConfirmation(metaProgress.meta) },
-                    onEdit = { viewModel.startEditing(metaProgress.meta) },
-                    onMarkCompleted = { viewModel.markAsCompleted(metaProgress.meta) },
-                    onMarkCancelled = { viewModel.markAsCancelled(metaProgress.meta) }
+                    onDelete = { viewModel.deleteMeta(metaProgress.meta) }
                 )
             }
         }
-    }
-
-    // DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN
-    if (uiState.showDeleteConfirmation) {
-        DeleteConfirmationDialog(
-            metaNombre = uiState.metaToDelete?.nombre ?: "esta meta",
-            onConfirm = { viewModel.confirmDelete() },
-            onDismiss = { viewModel.hideDeleteConfirmation() }
-        )
     }
 }
 
@@ -237,8 +189,7 @@ fun CreateGoalForm(
                 onValueChange = { viewModel.onTargetAmountChange(it) },
                 label = { Text("Monto límite (BOB)") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                singleLine = true
             )
 
             // MESES
@@ -259,9 +210,9 @@ fun CreateGoalForm(
                 maxLines = 3
             )
 
-            // BOTÓN GUARDAR
+            // BOTÓN CREAR
             Button(
-                onClick = { viewModel.saveMeta() },
+                onClick = { viewModel.createMeta() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -274,47 +225,17 @@ fun CreateGoalForm(
                         color = Color.White
                     )
                 } else {
-                    Text(
-                        if (uiState.isEditMode) "Guardar Cambios" else "Crear Meta",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Crear Meta", fontWeight = FontWeight.Bold)
                 }
             }
 
             // ERROR
             if (uiState.errorMessage != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = RedWarning.copy(alpha = 0.1f)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = uiState.errorMessage!!,
-                            color = RedWarning,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { viewModel.clearError() },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar error",
-                                tint = RedWarning
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = uiState.errorMessage!!,
+                    color = RedWarning,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
@@ -328,10 +249,7 @@ fun CreateGoalForm(
 fun GoalCard(
     goalWithProgress: MetaAhorroWithProgress,
     categoriaNombre: String,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit,
-    onMarkCompleted: () -> Unit,
-    onMarkCancelled: () -> Unit
+    onDelete: () -> Unit
 ) {
     val goal = goalWithProgress.meta
     val progress = goalWithProgress.progress
@@ -368,61 +286,12 @@ fun GoalCard(
                     )
                 }
 
-                Row {
-                    // Botón Editar
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    
-                    // Menú de opciones
-                    var expanded by remember { mutableStateOf(false) }
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Más opciones"
-                        )
-                    }
-                    
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Marcar como completada") },
-                            onClick = {
-                                onMarkCompleted()
-                                expanded = false
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.CheckCircle, null, tint = GreenSuccess)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Cancelar meta") },
-                            onClick = {
-                                onMarkCancelled()
-                                expanded = false
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Cancel, null, tint = OrangeMedium)
-                            }
-                        )
-                        Divider()
-                        DropdownMenuItem(
-                            text = { Text("Eliminar") },
-                            onClick = {
-                                onDelete()
-                                expanded = false
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Delete, null, tint = RedWarning)
-                            }
-                        )
-                    }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = RedWarning
+                    )
                 }
             }
 
@@ -513,183 +382,3 @@ fun GoalCard(
         }
     }
 }
-
-// ---------------------------------------------------------
-// CHIPS DE FILTROS
-// ---------------------------------------------------------
-
-@Composable
-fun FilterChips(
-    selectedFilter: MetaFilter,
-    onFilterChange: (MetaFilter) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        MetaFilter.values().forEach { filter ->
-            FilterChip(
-                selected = selectedFilter == filter,
-                onClick = { onFilterChange(filter) },
-                label = { 
-                    Text(
-                        text = when (filter) {
-                            MetaFilter.TODAS -> "Todas"
-                            MetaFilter.ACTIVAS -> "Activas"
-                            MetaFilter.COMPLETADAS -> "Completadas"
-                            MetaFilter.CANCELADAS -> "Canceladas"
-                            MetaFilter.NO_CUMPLIDAS -> "No cumplidas"
-                            MetaFilter.VIGENTES -> "Vigentes"
-                        }
-                    ) 
-                },
-                leadingIcon = if (selectedFilter == filter) {
-                    { Icon(Icons.Default.Check, null, Modifier.size(18.dp)) }
-                } else null
-            )
-        }
-    }
-}
-
-// ---------------------------------------------------------
-// DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN
-// ---------------------------------------------------------
-
-@Composable
-fun DeleteConfirmationDialog(
-    metaNombre: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = RedWarning,
-                modifier = Modifier.size(48.dp)
-            )
-        },
-        title = {
-            Text(
-                text = "¿Eliminar meta?",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Text(
-                text = "¿Estás seguro de que deseas eliminar la meta \"$metaNombre\"? Esta acción no se puede deshacer.",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = RedWarning
-                )
-            ) {
-                Text("Eliminar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-// ---------------------------------------------------------
-// SELECTOR DE ORDENAMIENTO
-// ---------------------------------------------------------
-
-@Composable
-fun SortSelector(
-    selectedSort: MetaSortField,
-    onSortChange: (MetaSortField) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Ordenar por:",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
-        
-        Box {
-            OutlinedButton(
-                onClick = { expanded = true },
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = when (selectedSort) {
-                        MetaSortField.FECHA_OBJETIVO -> "Fecha"
-                        MetaSortField.PROGRESO -> "Progreso"
-                        MetaSortField.MONTO -> "Monto"
-                    }
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Ordenar"
-                )
-            }
-            
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Por Fecha objetivo") },
-                    onClick = {
-                        onSortChange(MetaSortField.FECHA_OBJETIVO)
-                        expanded = false
-                    },
-                    leadingIcon = {
-                        if (selectedSort == MetaSortField.FECHA_OBJETIVO) {
-                            Icon(Icons.Default.Check, null)
-                        }
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Por Progreso") },
-                    onClick = {
-                        onSortChange(MetaSortField.PROGRESO)
-                        expanded = false
-                    },
-                    leadingIcon = {
-                        if (selectedSort == MetaSortField.PROGRESO) {
-                            Icon(Icons.Default.Check, null)
-                        }
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Por Monto") },
-                    onClick = {
-                        onSortChange(MetaSortField.MONTO)
-                        expanded = false
-                    },
-                    leadingIcon = {
-                        if (selectedSort == MetaSortField.MONTO) {
-                            Icon(Icons.Default.Check, null)
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
-

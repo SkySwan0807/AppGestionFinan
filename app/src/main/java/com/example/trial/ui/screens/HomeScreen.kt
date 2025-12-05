@@ -97,7 +97,7 @@ fun HomeScreen(
 
         // Comparación mensual
         item {
-            ComparisonCard(comparison = uiState.monthlyexpenses)
+            ComparisonCard(comparison = uiState.comparisonWithLastMonth)
         }
 
         // Título gestión
@@ -125,7 +125,7 @@ fun HomeScreen(
             )
         }
 
-        items(uiState.recentTransfers.take(5)) { transaccion ->
+        items(uiState.recentTransfers.take(10)) { transaccion ->
             TransaccionItem(transaccion = transaccion)
         }
     }
@@ -311,8 +311,7 @@ fun getCategoryColor(category: Int): Color {
         2 -> TransportColor
         3 -> ServicesColor
         4 -> LeisureColor
-        5 -> OthersColor
-        else -> GreenSuccess
+        else -> OthersColor
     }
 }
 

@@ -42,7 +42,7 @@ class HomeViewModel @Inject constructor(
 
             // Obtenemos flujos de datos
             val monthlyTransactionsFlow = transaccionRepository.getTransfersBetween(startOfMonth, endOfMonth)
-            val categoryBreakdownFlow = transaccionRepository.getSumByCategoryFecha(startOfMonth, endOfMonth)
+            val categoryBreakdownFlow = transaccionRepository.getSumByCategory(startOfMonth, endOfMonth)
             val allTransactionsFlow = transaccionRepository.getAllTransacciones()
             val totalSpendingFlow = transaccionRepository.totalSpending()
 

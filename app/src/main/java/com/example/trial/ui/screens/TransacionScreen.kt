@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -15,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.trial.ui.theme.*
@@ -28,7 +26,7 @@ fun ExpenseScreen(
     viewModel: TransaccionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val categorias by viewModel.catFiltrado.collectAsState()
+    val categorias by viewModel.categoriasFiltradas.collectAsState()
 
     var expanded by remember { mutableStateOf(false) }
     var isIngreso by remember { mutableStateOf(false) }
@@ -72,9 +70,8 @@ fun ExpenseScreen(
         // Switch ingreso/gasto
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = if (isIngreso) "Ingreso " else "Gasto ",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isIngreso) GreenSuccess else RedWarning
+                text = if (isIngreso) "Ingreso" else "Gasto",
+                style = MaterialTheme.typography.bodyMedium
             )
             Switch(
                 checked = isIngreso,
@@ -84,9 +81,7 @@ fun ExpenseScreen(
                 },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = GreenSuccess,
-                    checkedTrackColor = GreenSuccessLight,
-                    uncheckedThumbColor = RedWarning,
-                    uncheckedTrackColor = RedWarningLight
+                    uncheckedThumbColor = RedWarning
                 )
             )
         }
@@ -98,9 +93,7 @@ fun ExpenseScreen(
             label = { Text("Monto (BoB)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            isError = uiState.errorMessage != null && uiState.amount.toDoubleOrNull() == null,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-
+            isError = uiState.errorMessage != null && uiState.amount.toDoubleOrNull() == null
         )
 
         // Selector de categoría (solo si es gasto manual)
@@ -254,7 +247,7 @@ fun QuickExpenseButtons(viewModel: TransaccionViewModel) {
 
         categories.forEach { (categoryId, amounts) ->
             CategoryQuickButtons(
-                category = getCategoryName(categoryId),
+                category = viewModel.getCategoryNameById(categoryId),
                 amounts = amounts,
                 color = getCategoryColor(categoryId),
                 onAmountClick = { amount ->

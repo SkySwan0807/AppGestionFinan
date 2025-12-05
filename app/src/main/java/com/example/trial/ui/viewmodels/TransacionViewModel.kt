@@ -2,7 +2,6 @@ package com.example.trial.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.trial.data.local.entities.CategoriaEntity
 import com.example.trial.data.local.entities.TransaccionEntity
 import com.example.trial.data.repository.CategoriaRepository
 import com.example.trial.data.repository.MetaAhorroRepository
@@ -11,18 +10,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-
-data class TransaccionUiState(
-    val amount: String = "",
-    val categoryId: Int = 0,
-    val categoryName: String = "",
-    val note: String = "",
-    val isLoading: Boolean = false,
-    val showSuccess: Boolean = false,
-    val errorMessage: String? = null,
-    val isIncome: Boolean = false
-)
 
 @HiltViewModel
 class TransaccionViewModel @Inject constructor(
@@ -33,29 +20,58 @@ class TransaccionViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(TransaccionUiState())
     val uiState: StateFlow<TransaccionUiState> = _uiState.asStateFlow()
-    //private val _todasLasCategorias = MutableStateFlow<List<CategoriaEntity>>(emptyList())
 
-    private val ingreso = MutableStateFlow(
-        CategoriaEntity(
-            6,
-            "Ingreso",
-            ""))
+    // Flujo para categorías filtradas (sin "Ingreso" para el selector)
+    private val _categoriasFiltradas = MutableStateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>>(emptyList())
+    val categoriasFiltradas: StateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>> = _categoriasFiltradas.asStateFlow()
 
-    val _todasLasCategorias : StateFlow<List<CategoriaEntity>> =
-        categoriaRepository.getAllCategorias()
-            .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
+    // Flujo para TODAS las categorías (incluyendo "Ingreso")
+    private val _todasLasCategorias = MutableStateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>>(emptyList())
+    val todasLasCategorias: StateFlow<List<com.example.trial.data.local.entities.CategoriaEntity>> = _todasLasCategorias.asStateFlow()
 
+    // Cache para nombres de categorías por ID
+    private val _categoriasMap = MutableStateFlow<Map<Int, String>>(emptyMap())
+    val categoriasMap: StateFlow<Map<Int, String>> = _categoriasMap.asStateFlow()
 
-    val catFiltrado: StateFlow<List<CategoriaEntity>> =
-        combine(_todasLasCategorias, ingreso) { lista, ingreso ->
-            lista.filter { it.idCategoria != ingreso.idCategoria }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    // Estado de carga
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    init {
+        loadCategorias()
+    }
 
+    private fun loadCategorias() {
+        viewModelScope.launch {
+            _isLoading.value = true
+
+            categoriaRepository.getAllCategorias().collect { todasLasCategorias ->
+                // Guardar todas las categorías
+                _todasLasCategorias.value = todasLasCategorias
+
+                // Crear mapa de categorías para búsquedas rápidas
+                val categoriasMap = todasLasCategorias.associate { it.idCategoria to it.nombre }
+                _categoriasMap.value = categoriasMap
+
+                // Filtrar para el selector (excluir "Ingreso")
+                val categoriasFiltradas = todasLasCategorias.filter { it.nombre.lowercase() != "ingreso" }
+                _categoriasFiltradas.value = categoriasFiltradas
+
+                _isLoading.value = false
+
+                println("🔍 Categorías cargadas: ${todasLasCategorias.size}")
+                todasLasCategorias.forEach { cat ->
+                    println("   - ${cat.idCategoria}: ${cat.nombre}")
+                }
+            }
+        }
+    }
+
+    fun getCategoryNameById(idCategoria: Int): String {
+        return _categoriasMap.value[idCategoria] ?: "Cargando..."
+    }
+
+    // ... el resto de tus funciones permanecen igual ...
     fun onAmountChange(amount: String) {
         _uiState.update { it.copy(amount = amount) }
     }
@@ -145,7 +161,7 @@ class TransaccionViewModel @Inject constructor(
                 val transaccion = TransaccionEntity(
                     monto = -amount,
                     idCategoria = categoryId,
-                    descripcion = "Gasto rápido",
+                    descripcion = "Transacción rápida",
                     fecha = System.currentTimeMillis(),
                     idCuenta = 1
                 )
@@ -193,3 +209,13 @@ class TransaccionViewModel @Inject constructor(
     }
 }
 
+data class TransaccionUiState(
+    val amount: String = "",
+    val categoryId: Int = 0,
+    val categoryName: String = "",
+    val note: String = "",
+    val isLoading: Boolean = false,
+    val showSuccess: Boolean = false,
+    val errorMessage: String? = null,
+    val isIncome: Boolean = false
+)
