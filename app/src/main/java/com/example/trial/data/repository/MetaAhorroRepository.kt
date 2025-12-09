@@ -57,4 +57,14 @@ class MetaAhorroRepository @Inject constructor(
     suspend fun marcarComoCompletada(idMeta: Int) {
         dao.marcarComoCompletada(idMeta)
     }
+    
+    // Marcar meta como fallida
+    suspend fun marcarComoFallida(idMeta: Int) {
+        dao.marcarComoFallida(idMeta)
+    }
+    
+    // Obtener metas que expiraron hoy
+    suspend fun getMetasExpiradasHoy(startOfDay: Long, endOfDay: Long): List<MetaAhorroEntity> {
+        return dao.getMetasExpiradasHoy(startOfDay, endOfDay)
+    }
 }

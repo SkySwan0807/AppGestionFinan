@@ -26,6 +26,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <!-- Servicio de prueba de notificaciones para modo debug -->
+        <service
+            android:name=".notification_testing.NotificationTestService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>

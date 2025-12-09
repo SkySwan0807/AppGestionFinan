@@ -38,6 +38,10 @@ interface TransaccionDao {
     @Query("SELECT SUM(monto) FROM transacciones WHERE idCategoria = :idCategoria AND fecha BETWEEN :start AND :end")
     suspend fun getTotalPorCategoriaYPeriodo(idCategoria: Int, start: Long, end: Long): Double?
 
+    // Obtener solo GASTOS (montos negativos) de una categoría específica
+    @Query("SELECT SUM(ABS(monto)) FROM transacciones WHERE idCategoria = :idCategoria AND monto < 0")
+    fun getGastosPorCategoria(idCategoria: Int): Flow<Double?>
+
     @Query("SELECT * FROM transacciones WHERE fecha BETWEEN :start AND :end ORDER BY fecha DESC")
     fun getTransfersBetween(start: Long, end: Long): Flow<List<TransaccionEntity>>
 

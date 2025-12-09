@@ -43,8 +43,16 @@ interface MetaAhorroDao {
 
     @Query("UPDATE metas_ahorro SET idEstado = 1 WHERE idMeta = :idMeta")
     suspend fun marcarComoCompletada(idMeta: Int)
+    
+    // Marcar meta como fallida (excedió el presupuesto)
+    @Query("UPDATE metas_ahorro SET idEstado = 2 WHERE idMeta = :idMeta")
+    suspend fun marcarComoFallida(idMeta: Int)
 
     // Obtener metas cuya fecha objetivo no pasó
     @Query("SELECT * FROM metas_ahorro WHERE fechaObjetivo >= :fechaActual ORDER BY fechaObjetivo ASC")
     fun getMetasVigentes(fechaActual: Long): Flow<List<MetaAhorroEntity>>
+    
+    // Obtener metas que expiraron hoy (entre las 00:00 y 23:59 de hoy)
+    @Query("SELECT * FROM metas_ahorro WHERE fechaObjetivo BETWEEN :startOfDay AND :endOfDay AND idEstado = 0")
+    suspend fun getMetasExpiradasHoy(startOfDay: Long, endOfDay: Long): List<MetaAhorroEntity>
 }

@@ -35,7 +35,7 @@ data class MetaAhorroUiState(
     val categoryId: Int = 0,
     val categoryName: String = "",
     val targetAmount: String = "",
-    val months: String = "1",
+    val endDateMillis: Long? = null,  // Cambio: fecha en milisegundos en lugar de meses
     val description: String = "",
     val isLoading: Boolean = false,
     val showSuccess: Boolean = false,
@@ -105,14 +105,15 @@ class MetaAhorroViewModel @Inject constructor(
                 .flatMapLatest { metas ->
                     combine(
                         metas.map { meta ->
-                            transaccionRepository.getTotalPorCuenta(meta.idCategoria)
-                                .map { total ->
-                                    val currentSpent = total ?: 0.0
+                            // CAMBIO: Usar solo GASTOS de la categoría, no el total
+                            transaccionRepository.getGastosPorCategoria(meta.idCategoria)
+                                .map { totalGastado ->
+                                    val currentSpent = totalGastado ?: 0.0
 
+                                    // Calcular progreso: cuánto has gastado de tu límite
+                                    // NO limitar a 100% - permitir valores mayores cuando te excedes
                                     val progress = if (meta.monto > 0) {
-                                        (currentSpent / meta.monto)
-                                            .coerceIn(0.0, 1.0)
-                                            .toFloat()
+                                        (currentSpent / meta.monto).toFloat()
                                     } else 0f
 
                                     MetaAhorroWithProgress(
@@ -160,8 +161,8 @@ class MetaAhorroViewModel @Inject constructor(
         _uiState.update { it.copy(targetAmount = amount) }
     }
 
-    fun onMonthsChange(months: String) {
-        _uiState.update { it.copy(months = months) }
+    fun onEndDateChange(dateMillis: Long) {
+        _uiState.update { it.copy(endDateMillis = dateMillis) }
     }
 
     fun onDescriptionChange(description: String) {
@@ -205,18 +206,13 @@ class MetaAhorroViewModel @Inject constructor(
     // EDITAR META
     // -------------------------------------------------------------
     fun startEditing(meta: MetaAhorroEntity) {
-        val monthsDiff = calculateMonthsDifference(
-            meta.fechaInicio,
-            meta.fechaObjetivo
-        )
-
         _uiState.update {
             it.copy(
                 isEditMode = true,
                 editingMetaId = meta.idMeta,
                 categoryId = meta.idCategoria,
                 targetAmount = meta.monto.toString(),
-                months = monthsDiff.toString(),
+                endDateMillis = meta.fechaObjetivo,
                 description = meta.descripcion ?: ""
             )
         }
@@ -229,7 +225,7 @@ class MetaAhorroViewModel @Inject constructor(
                 editingMetaId = null,
                 categoryId = 0,
                 targetAmount = "",
-                months = "1",
+                endDateMillis = null,
                 description = ""
             )
         }
@@ -247,15 +243,20 @@ class MetaAhorroViewModel @Inject constructor(
         val current = _uiState.value
 
         val amount = current.targetAmount.toDoubleOrNull()
-        val months = current.months.toIntOrNull()
+        val endDate = current.endDateMillis
 
         if (amount == null || amount <= 0) {
             _uiState.update { it.copy(errorMessage = "Monto debe ser mayor a 0") }
             return
         }
 
-        if (months == null || months <= 0) {
-            _uiState.update { it.copy(errorMessage = "Plazo debe ser mayor a 0") }
+        if (endDate == null) {
+            _uiState.update { it.copy(errorMessage = "Debe seleccionar una fecha límite") }
+            return
+        }
+
+        if (endDate <= System.currentTimeMillis()) {
+           _uiState.update { it.copy(errorMessage = "La fecha límite debe ser futura") }
             return
         }
 
@@ -272,25 +273,17 @@ class MetaAhorroViewModel @Inject constructor(
                     // MODO EDICIÓN
                     val metaExistente = metaRepository.getById(current.editingMetaId)
                     metaExistente?.let { meta ->
-                        val calendar = Calendar.getInstance()
-                        calendar.timeInMillis = meta.fechaInicio
-                        calendar.add(Calendar.MONTH, months)
-                        val nuevaFechaObjetivo = calendar.timeInMillis
-
                         val metaActualizada = meta.copy(
                             idCategoria = current.categoryId,
                             monto = amount,
                             descripcion = current.description.takeIf { it.isNotBlank() },
-                            fechaObjetivo = nuevaFechaObjetivo
+                            fechaObjetivo = endDate
                         )
                         metaRepository.update(metaActualizada)
                     }
                 } else {
                     // MODO CREACIÓN
-                    val calendar = Calendar.getInstance()
-                    val start = calendar.timeInMillis
-                    calendar.add(Calendar.MONTH, months)
-                    val end = calendar.timeInMillis
+                    val start = System.currentTimeMillis()
 
                     val categoriaNombre = current.categories
                         .firstOrNull { it.idCategoria == current.categoryId }?.nombre ?: "Meta"
@@ -300,9 +293,9 @@ class MetaAhorroViewModel @Inject constructor(
                         monto = amount,
                         montoActual = 0.0,
                         fechaInicio = start,
-                        fechaObjetivo = end,
+                        fechaObjetivo = endDate,
                         descripcion = current.description.takeIf { it.isNotBlank() },
-                        idEstado = 1, // Activo
+                        idEstado = 0, // Activo
                         nombre = categoriaNombre
                     )
 
@@ -317,7 +310,7 @@ class MetaAhorroViewModel @Inject constructor(
                         isLoading = false,
                         categoryId = 0,
                         targetAmount = "",
-                        months = "1",
+                        endDateMillis = null,
                         description = ""
                     )
                 }

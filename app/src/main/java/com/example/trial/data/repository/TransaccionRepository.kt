@@ -21,6 +21,10 @@ class TransaccionRepository @Inject constructor(
     suspend fun getTotalByCategoriaAndPeriod(idCategoria: Int, start: Long, end: Long): Double {
         return transaccionDao.getTotalPorCategoriaYPeriodo(idCategoria, start, end) ?: 0.0
     }
+    
+    // Obtener solo gastos (valores absolutos de montos negativos) de una categoría
+    fun getGastosPorCategoria(idCategoria: Int): Flow<Double?> =
+        transaccionDao.getGastosPorCategoria(idCategoria)
 
     fun getSumByCategoryFecha(startTs: Long, endTs: Long): Flow<List<CategorySum>> =
         transaccionDao.getSumByCategoryFecha(startTs, endTs)

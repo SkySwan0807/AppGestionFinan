@@ -104,4 +104,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     implementation(libs.kotlinx.datetime)
+    
+    // WorkManager for background tasks
+    implementation(libs.androidx.work.runtime.ktx)
+
 }

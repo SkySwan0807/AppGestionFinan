@@ -28,7 +28,8 @@ data class TransaccionUiState(
 class TransaccionViewModel @Inject constructor(
     private val transaccionRepository: TransaccionRepository,
     private val metaAhorroRepository: MetaAhorroRepository,
-    private val categoriaRepository: CategoriaRepository
+    private val categoriaRepository: CategoriaRepository,
+    private val inactivityManager: com.example.trial.notification_testing.InactivityNotificationManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TransaccionUiState())
@@ -113,6 +114,9 @@ class TransaccionViewModel @Inject constructor(
 
                 transaccionRepository.addTransaccion(transaccion)
 
+                // Registrar actividad (última transacción)
+                inactivityManager.recordActivity()
+
                 if (monto < 0) {
                     updateMetaProgress(currentState.categoryId, monto)
                 }
@@ -151,6 +155,10 @@ class TransaccionViewModel @Inject constructor(
                 )
 
                 transaccionRepository.addTransaccion(transaccion)
+                
+                // Registrar actividad (última transacción)
+                inactivityManager.recordActivity()
+                
                 updateMetaProgress(categoryId, -amount)
 
                 _uiState.update {

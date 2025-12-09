@@ -241,14 +241,63 @@ fun CreateGoalForm(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
-            // MESES
-            OutlinedTextField(
-                value = uiState.months,
-                onValueChange = { viewModel.onMonthsChange(it) },
-                label = { Text("Plazo (meses)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+            // FECHA LÍMITE (DatePicker)
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = uiState.endDateMillis,
+                selectableDates = object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        val now = System.currentTimeMillis()
+                        val maxDate = now + (100L * 365 * 24 * 60 * 60 * 1000) // 100 años
+                        return utcTimeMillis >= now && utcTimeMillis <= maxDate
+                    }
+                }
             )
+            
+            var showDatePicker by remember { mutableStateOf(false) }
+            val dateFormatter = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()) }
+            
+            OutlinedTextField(
+                value = if (uiState.endDateMillis != null) {
+                    dateFormatter.format(java.util.Date(uiState.endDateMillis!!))
+                } else {
+                    ""
+                },
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Fecha límite") },
+                placeholder = { Text("Selecciona una fecha") },
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.CalendarToday, "Seleccionar fecha")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            if (showDatePicker) {
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                datePickerState.selectedDateMillis?.let {
+                                    viewModel.onEndDateChange(it)
+                                }
+                                showDatePicker = false
+                            }
+                        ) {
+                            Text("Aceptar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
 
             // DESCRIPCIÓN
             OutlinedTextField(
