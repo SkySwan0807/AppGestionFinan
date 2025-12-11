@@ -114,7 +114,9 @@ class HistorialViewModel @Inject constructor(
             try {
                 val transacciones = historialFiltrado.value
                 if (transacciones.isEmpty()) {
-                    onError("No hay datos para exportar")
+                    withContext(Dispatchers.Main) {
+                        onError("No hay datos para exportar")
+                    }
                     return@launch
                 }
 
@@ -122,12 +124,12 @@ class HistorialViewModel @Inject constructor(
                 val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                 val fileName = "transacciones_${dateFormat.format(Date())}.csv"
 
-                // Crear archivo en directorio de documentos
-                val file = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
-                } else {
-                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), fileName)
+                // Usar directorio cache de la app (no requiere permisos)
+                val cacheDir = File(context.cacheDir, "exports")
+                if (!cacheDir.exists()) {
+                    cacheDir.mkdirs()
                 }
+                val file = File(cacheDir, fileName)
 
                 // Escribir datos en CSV
                 PrintWriter(file).use { writer ->
@@ -148,9 +150,14 @@ class HistorialViewModel @Inject constructor(
                     }
                 }
 
-                onSuccess(file)
+                withContext(Dispatchers.Main) {
+                    onSuccess(file)
+                }
             } catch (e: Exception) {
-                onError("Error al exportar CSV: ${e.message}")
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onError("Error al exportar CSV: ${e.message}")
+                }
             }
         }
     }
@@ -160,7 +167,9 @@ class HistorialViewModel @Inject constructor(
             try {
                 val transacciones = historialFiltrado.value
                 if (transacciones.isEmpty()) {
-                    onError("No hay datos para exportar")
+                    withContext(Dispatchers.Main) {
+                        onError("No hay datos para exportar")
+                    }
                     return@launch
                 }
 
@@ -169,8 +178,8 @@ class HistorialViewModel @Inject constructor(
 
                 // Crear una página A4 (595 x 842 puntos)
                 val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
-                val page = document.startPage(pageInfo)
-                val canvas = page.canvas
+                var page = document.startPage(pageInfo)
+                var canvas = page.canvas
 
                 val paint = android.graphics.Paint()
                 paint.textSize = 12f
@@ -178,6 +187,7 @@ class HistorialViewModel @Inject constructor(
                 var yPos = 50f
                 val margin = 40f
                 val columnWidth = 100f
+                var pageNumber = 1
 
                 // Título
                 paint.textSize = 16f
@@ -212,8 +222,32 @@ class HistorialViewModel @Inject constructor(
 
                 val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                 transacciones.forEach { trans ->
+                    // Nueva página si se necesita
+                    if (yPos > 800f) {
+                        document.finishPage(page)
+                        pageNumber++
+                        page = document.startPage(pageInfo)
+                        canvas = page.canvas
+                        yPos = 50f
+                        
+                        // Recrear cabeceras
+                        paint.textSize = 12f
+                        paint.isFakeBoldText = true
+                        canvas.drawText("Fecha", margin, yPos, paint)
+                        canvas.drawText("Descripción", margin + columnWidth, yPos, paint)
+                        canvas.drawText("Categoría", margin + columnWidth * 2, yPos, paint)
+                        canvas.drawText("Monto", margin + columnWidth * 3, yPos, paint)
+                        yPos += 20f
+                        paint.textSize = 11f
+                        paint.isFakeBoldText = false
+                    }
+                    
+                    paint.color = 0xFF000000.toInt()
                     canvas.drawText(dateFormatter.format(Date(trans.fecha)), margin, yPos, paint)
-                    canvas.drawText(trans.descripcion ?: "", margin + columnWidth, yPos, paint)
+                    
+                    val desc = trans.descripcion ?: ""
+                    val descRecortada = if (desc.length > 15) desc.substring(0, 15) + "..." else desc
+                    canvas.drawText(descRecortada, margin + columnWidth, yPos, paint)
                     canvas.drawText(getCategoriaNombre(trans.idCategoria), margin + columnWidth * 2, yPos, paint)
 
                     // Formatear monto con color
@@ -223,35 +257,32 @@ class HistorialViewModel @Inject constructor(
                     // Restaurar color negro
                     paint.color = 0xFF000000.toInt()
                     yPos += 20f
-
-                    // Nueva página si se necesita
-                    if (yPos > 800f) {
-                        document.finishPage(page)
-                        val newPage = document.startPage(pageInfo)
-                        val newCanvas = newPage.canvas
-                        yPos = 50f
-                        // Copiar el paint al nuevo canvas
-                        // (En una implementación real, deberías recrear las configuraciones)
-                    }
                 }
 
                 document.finishPage(page)
 
                 // Crear nombre del archivo
                 val fileName = "transacciones_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
-                val file = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
-                } else {
-                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), fileName)
+                
+                // Usar directorio cache de la app (no requiere permisos)
+                val cacheDir = File(context.cacheDir, "exports")
+                if (!cacheDir.exists()) {
+                    cacheDir.mkdirs()
                 }
+                val file = File(cacheDir, fileName)
 
                 // Guardar PDF
                 document.writeTo(FileOutputStream(file))
                 document.close()
 
-                onSuccess(file)
+                withContext(Dispatchers.Main) {
+                    onSuccess(file)
+                }
             } catch (e: Exception) {
-                onError("Error al exportar PDF: ${e.message}")
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onError("Error al exportar PDF: ${e.message}")
+                }
             }
         }
     }
