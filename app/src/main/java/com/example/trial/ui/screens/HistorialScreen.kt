@@ -40,11 +40,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import java.io.File
 
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.TableChart
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.ui.platform.LocalContext
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlin.time.ExperimentalTime
+import network.chaintech.kmp_date_time_picker.ui.datepicker.WheelDatePickerView
+import network.chaintech.kmp_date_time_picker.utils.DateTimePickerView
 
 
 @Composable
@@ -640,9 +641,36 @@ fun DatePickerDialogCustom(
     )
 }
 
+@Composable
+fun WheelDatePicker(
+    estado: Boolean,
+    title: String,
+    onConfirm: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    WheelDatePickerView(
+        showDatePicker = estado,
+        title = title,
+        onDismiss = { onDismiss() },
+        doneLabel = "Confirmar",
+        height = 200.dp,
+        dateTimePickerView = DateTimePickerView.DIALOG_VIEW,
+        onDoneClick = {
+            onConfirm(localDateToMillis(it))
+        }
+    )
+}
+
 fun formatoFecha(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd MMM yyyy", Locale("es", "BO"))
     return sdf.format(Date(timestamp))
+}
+
+@OptIn(ExperimentalTime::class)
+fun localDateToMillis(localDate: LocalDate): Long {
+    return localDate
+        .atStartOfDayIn(TimeZone.currentSystemDefault())
+        .toEpochMilliseconds()
 }
 
 fun getCategoryIconById(idCategoria: Int): ImageVector {
