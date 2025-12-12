@@ -108,8 +108,4 @@ dependencies {
     // WorkManager for background tasks
     implementation(libs.androidx.work.runtime.ktx)
 
-    //Date picker
-    implementation("network.chaintech:kmp-date-time-picker:1.1.1")
-
-
 }
