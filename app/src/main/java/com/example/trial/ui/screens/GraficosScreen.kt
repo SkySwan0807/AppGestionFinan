@@ -34,7 +34,7 @@ fun GraficosScreen(
     viewModel: GraficosViewModel = hiltViewModel()
 ) {
     val gastoPorCategoria by viewModel.gastoDeCategorias.collectAsState()
-    val gastoPorCategoriaPorDia by viewModel.ingresosTotales.collectAsState()
+    val ingresoPorDia by viewModel.ingresosTotales.collectAsState()
 
     Column(
         modifier = Modifier
@@ -85,15 +85,15 @@ fun GraficosScreen(
             }
 
             item {
-                if (gastoPorCategoria.isEmpty()) {
+                val ingresos = ingresoPorDia ?: emptyList()
+
+                if (ingresos.isEmpty()) {
                     Text("No hay datos para mostrar")
                 } else {
-                    EvolucionSaldoChart(gastoPorCategoriaPorDia ?: emptyList())
-
+                    EvolucionSaldoChart(ingresos)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-
             }
         }
     }
